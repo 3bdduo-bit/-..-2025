@@ -1,5 +1,19 @@
 {
+  "name": "school-dashboard",
+  "version": "1.0.0",
+  "description": "School Performance Dashboard",
+  "main": "index.html",
+  "homepage": "https://<your-username>.github.io/School_Dashboard",
+  "scripts": {
+    "build": "node create_dashboard.js",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d ."
+  },
   "dependencies": {
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
   }
 }
+

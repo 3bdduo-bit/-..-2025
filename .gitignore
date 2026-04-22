@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+package-lock.json
+*.xlsx
+# Add any other temporary or sensitive files here

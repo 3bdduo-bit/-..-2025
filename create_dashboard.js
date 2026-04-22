@@ -135,6 +135,29 @@ try {
             <!-- Teacher sections will be injected here -->
         </div>
 
+        <div id="allStudentsRankingContainer" class="glass p-6 shadow-sm mt-12 mb-12">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4 text-center">ترتيب جميع الطلاب حسب النسبة</h2>
+            <div class="overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white" style="max-height: 600px;">
+
+                <table class="w-full text-right">
+                    <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-4 font-bold">الترتيب</th>
+                            <th class="p-4 font-bold">اسم الطالب</th>
+                            <th class="p-4 font-bold">المعلم / الفصل</th>
+                            <th class="p-4 font-bold">المجموع</th>
+                            <th class="p-4 font-bold">النسبة</th>
+                            <th class="p-4 font-bold">التقدير</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rankingTableBody" class="divide-y divide-slate-100">
+                        <!-- Ranking will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
     </div>
 
     <script>
@@ -298,13 +321,31 @@ try {
             });
         });
 
+        // Global Ranking Table
+        const rankingTableBody = document.getElementById('rankingTableBody');
+        validStudents
+            .sort((a, b) => b.percentage - a.percentage)
+            .forEach((s, idx) => {
+                const p = s.percentage * 100;
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50 transition-colors";
+                row.innerHTML = \`
+                    <td class="p-4 text-slate-500 font-medium">\${idx + 1}</td>
+                    <td class="p-4 font-bold text-slate-800">\${s.name}</td>
+                    <td class="p-4 text-slate-600">\${s.sheet}</td>
+                    <td class="p-4 font-semibold text-slate-800">\${s.total}</td>
+                    <td class="p-4"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">\${p.toFixed(1)}%</span></td>
+                    <td class="p-4">\${getGradeText(p)}</td>
+                \`;
+                rankingTableBody.appendChild(row);
+            });
+
     </script>
 </body>
 </html>`;
 
-  fs.writeFileSync('C:\\Users\\W-11\\Desktop\\مدرسة التربية بالقرآن الكريم\\Excel\\dashboard.html', htmlContent);
-  fs.writeFileSync('C:\\School_Dashboard\\dashboard.html', htmlContent);
-  console.log('Dashboard generated successfully at dashboard.html');
+  fs.writeFileSync('index.html', htmlContent);
+  console.log('Dashboard generated successfully at index.html');
 } catch (error) {
   console.error('Error reading excel file:', error);
 }
