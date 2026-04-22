@@ -104,72 +104,116 @@ try {
     <style>
         body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
         .glass { background: #ffffff; border-radius: 1rem; border: 1px solid #e2e8f0; }
-        .card-hover:hover { transform: translateY(-3px); transition: all 0.2s ease; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        @media (max-width: 768px) {
+            .mobile-card-table thead {
+                display: none;
+            }
+            .mobile-card-table tr {
+                display: block;
+                margin-bottom: 1.5rem;
+                border: 1px solid #e2e8f0;
+                border-radius: 1rem;
+                padding: 1rem;
+                background: #fff;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            .mobile-card-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid #f1f5f9;
+                text-align: left !important;
+            }
+            .mobile-card-table td:last-child {
+                border-bottom: none;
+            }
+            .mobile-card-table td::before {
+                content: attr(data-label);
+                font-weight: 700;
+                color: #64748b;
+                margin-left: 1rem;
+                text-align: right;
+            }
+        }
     </style>
 </head>
-<body class="text-slate-800 antialiased p-4 md:p-8">
-    <div class="max-w-7xl mx-auto space-y-8">
+<body class="text-slate-800 antialiased p-2 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-6 md:space-y-8">
         
-        <header class="glass p-6 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-6">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-900 mb-2">النتيجة الكلية 2025</h1>
-                <p class="text-slate-500">لوحة بيانات مدرسة التربية بالقرآن الكريم - تحليل جميع الفصول والمعلمين</p>
+        <header class="glass p-4 md:p-6 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-6">
+            <div class="text-center lg:text-right w-full lg:w-auto">
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">النتيجة الكلية 2025</h1>
+                <p class="text-sm md:text-base text-slate-500">لوحة بيانات مدرسة التربية بالقرآن الكريم - تحليل جميع الفصول والمعلمين</p>
             </div>
-            <div class="flex flex-wrap gap-4 text-center justify-center">
-                <div class="bg-slate-50 px-6 py-4 rounded-xl border border-slate-200 min-w-[140px]">
-                    <p class="text-sm text-slate-500 font-semibold mb-1">إجمالي الطلاب</p>
-                    <p class="text-3xl font-bold text-slate-800" id="totalStudents">-</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 w-full lg:w-auto">
+                <div class="bg-slate-50 p-3 md:px-6 md:py-4 rounded-xl border border-slate-200 text-center">
+                    <p class="text-xs md:text-sm text-slate-500 font-semibold mb-1">إجمالي الطلاب</p>
+                    <p class="text-xl md:text-3xl font-bold text-slate-800" id="totalStudents">-</p>
                 </div>
-                <div class="bg-blue-50 px-6 py-4 rounded-xl border border-blue-200 min-w-[140px]">
-                    <p class="text-sm text-blue-600 font-semibold mb-1">متوسط النسبة العام</p>
-                    <p class="text-3xl font-bold text-blue-700" id="avgScore">-</p>
+                <div class="bg-blue-50 p-3 md:px-6 md:py-4 rounded-xl border border-blue-200 text-center">
+                    <p class="text-xs md:text-sm text-blue-600 font-semibold mb-1">متوسط النسبة</p>
+                    <p class="text-xl md:text-3xl font-bold text-blue-700" id="avgScore">-</p>
                 </div>
-                <div class="bg-emerald-50 px-6 py-4 rounded-xl border border-emerald-200 min-w-[140px]">
-                    <p class="text-sm text-emerald-600 font-semibold mb-1">نسبة النجاح الكلية</p>
-                    <p class="text-3xl font-bold text-emerald-700" id="passRate">-</p>
+                <div class="bg-emerald-50 p-3 md:px-6 md:py-4 rounded-xl border border-emerald-200 text-center col-span-2 md:col-span-1">
+                    <p class="text-xs md:text-sm text-emerald-600 font-semibold mb-1">نسبة النجاح</p>
+                    <p class="text-xl md:text-3xl font-bold text-emerald-700" id="passRate">-</p>
                 </div>
             </div>
         </header>
 
-        <div id="teachersDetailedContainer" class="space-y-8 mt-8">
+        <div id="teachersDetailedContainer" class="space-y-6 md:space-y-8 mt-4 md:mt-8">
             <!-- Teacher sections will be injected here -->
         </div>
 
-        <div id="allStudentsRankingContainer" class="glass p-6 shadow-sm mt-12 mb-12">
-            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4 text-center">ترتيب جميع الطلاب حسب النسبة</h2>
+        <div id="allStudentsRankingContainer" class="glass p-4 md:p-6 shadow-sm mt-8 md:mt-12 mb-8 md:mb-12">
+            <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">ترتيب جميع الطلاب حسب النسبة</h2>
             <div class="overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white" style="max-height: 600px;">
-
-                <table class="w-full text-right">
+                <table class="w-full text-right mobile-card-table">
                     <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                         <tr>
-                            <th class="p-4 font-bold">الترتيب</th>
-                            <th class="p-4 font-bold">اسم الطالب</th>
-                            <th class="p-4 font-bold">المعلم / الفصل</th>
-                            <th class="p-4 font-bold">المجموع</th>
-                            <th class="p-4 font-bold">النسبة</th>
-                            <th class="p-4 font-bold">التقدير</th>
+                            <th class="p-3 md:p-4 font-bold">الترتيب</th>
+                            <th class="p-3 md:p-4 font-bold">اسم الطالب</th>
+                            <th class="p-3 md:p-4 font-bold">المعلم / الفصل</th>
+                            <th class="p-3 md:p-4 font-bold">المجموع</th>
+                            <th class="p-3 md:p-4 font-bold">النسبة</th>
+                            <th class="p-3 md:p-4 font-bold">التقدير</th>
                         </tr>
                     </thead>
                     <tbody id="rankingTableBody" class="divide-y divide-slate-100">
-                        <!-- Ranking will be injected here -->
                     </tbody>
                 </table>
             </div>
         </div>
-
-
     </div>
 
+    <button id="backToTop" class="fixed bottom-6 right-6 bg-slate-800 text-white p-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+    </button>
+
     <script>
-        // Disable right click
         document.addEventListener('contextmenu', event => event.preventDefault());
 
+        const backToTopBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 500) {
+                backToTopBtn.classList.add('opacity-100');
+                backToTopBtn.classList.remove('opacity-0');
+            } else {
+                backToTopBtn.classList.add('opacity-0');
+                backToTopBtn.classList.remove('opacity-100');
+            }
+        });
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
         const studentData = ${JSON.stringify(allStudents)};
-        
-        // Use all data without deduplication to ensure all classes show their students
         const validStudents = studentData.filter(s => s.total > 0 && s.name);
         
-        // Top stats
         document.getElementById('totalStudents').textContent = validStudents.length;
         
         let totalPercentageSum = 0;
@@ -191,7 +235,6 @@ try {
             return '<span class="text-red-600 font-bold">راسب</span>';
         };
 
-        // Detailed Teacher Analysis
         const teachersDetailedContainer = document.getElementById('teachersDetailedContainer');
         const teacherData = {};
 
@@ -211,14 +254,12 @@ try {
                 };
             }
             teacherData[s.sheet].students.push(s);
-            
             const p = s.percentage * 100;
             if(p >= 90) teacherData[s.sheet].grades['امتياز (90-100%)']++;
             else if(p >= 80) teacherData[s.sheet].grades['جيد جدا (80-89%)']++;
             else if(p >= 70) teacherData[s.sheet].grades['جيد (70-79%)']++;
             else if(p >= 50) teacherData[s.sheet].grades['مقبول (50-69%)']++;
             else teacherData[s.sheet].grades['راسب (أقل من 50%)']++;
-            
             teacherData[s.sheet].total++;
         });
 
@@ -227,17 +268,16 @@ try {
             if (data.total === 0) return;
 
             const section = document.createElement('div');
-            section.className = "glass p-6 shadow-sm mt-8";
+            section.className = "glass p-4 md:p-6 shadow-sm";
 
             const header = document.createElement('h2');
-            header.className = "text-2xl font-bold text-slate-800 mb-6 border-b pb-4 text-center";
+            header.className = "text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center";
             header.textContent = 'المعلم / الفصل: ' + teacher;
             section.appendChild(header);
 
             const grid = document.createElement('div');
-            grid.className = "grid grid-cols-1 lg:grid-cols-3 gap-8";
+            grid.className = "grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8";
 
-            // Pie chart
             const chartDiv = document.createElement('div');
             chartDiv.className = "lg:col-span-1 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center shadow-sm";
             const chartTitle = document.createElement('h3');
@@ -246,26 +286,25 @@ try {
             chartDiv.appendChild(chartTitle);
 
             const canvasContainer = document.createElement('div');
-            canvasContainer.className = "h-[250px] w-full relative";
+            canvasContainer.className = "h-[250px] md:h-[300px] w-full relative";
             const canvas = document.createElement('canvas');
             canvas.id = 'detailedChart_' + idx;
             canvasContainer.appendChild(canvas);
             chartDiv.appendChild(canvasContainer);
             grid.appendChild(chartDiv);
 
-            // Students table
             const tableDiv = document.createElement('div');
             tableDiv.className = "lg:col-span-2 overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white";
-            tableDiv.style.maxHeight = "350px";
+            tableDiv.style.maxHeight = "400px";
 
-            let tableHTML = \`<table class="w-full text-right relative">
+            let tableHTML = \`<table class="w-full text-right relative mobile-card-table">
                 <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 shadow-sm z-10">
                     <tr>
-                        <th class="p-4 font-bold">م</th>
-                        <th class="p-4 font-bold">اسم الطالب</th>
-                        <th class="p-4 font-bold">المجموع</th>
-                        <th class="p-4 font-bold">النسبة</th>
-                        <th class="p-4 font-bold">التقدير</th>
+                        <th class="p-3 md:p-4 font-bold">م</th>
+                        <th class="p-3 md:p-4 font-bold">اسم الطالب</th>
+                        <th class="p-3 md:p-4 font-bold">المجموع</th>
+                        <th class="p-3 md:p-4 font-bold">النسبة</th>
+                        <th class="p-3 md:p-4 font-bold">التقدير</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">\`;
@@ -273,22 +312,20 @@ try {
             data.students.sort((a, b) => b.total - a.total).forEach((s, sIdx) => {
                 const p = s.percentage * 100;
                 tableHTML += \`<tr class="hover:bg-slate-50 transition-colors">
-                    <td class="p-4 text-slate-500 font-medium">\${sIdx + 1}</td>
-                    <td class="p-4 font-bold text-slate-800">\${s.name}</td>
-                    <td class="p-4 font-semibold text-slate-800">\${s.total}</td>
-                    <td class="p-4"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">\${p.toFixed(1)}%</span></td>
-                    <td class="p-4">\${getGradeText(p)}</td>
+                    <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="م">\${sIdx + 1}</td>
+                    <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">\${s.name}</td>
+                    <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="المجموع">\${s.total}</td>
+                    <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">\${p.toFixed(1)}%</span></td>
+                    <td class="p-3 md:p-4" data-label="التقدير">\${getGradeText(p)}</td>
                 </tr>\`;
             });
 
             tableHTML += \`</tbody></table>\`;
             tableDiv.innerHTML = tableHTML;
             grid.appendChild(tableDiv);
-
             section.appendChild(grid);
             teachersDetailedContainer.appendChild(section);
 
-            // Generate pie chart
             new Chart(canvas, {
                 type: 'pie',
                 data: {
@@ -321,7 +358,6 @@ try {
             });
         });
 
-        // Global Ranking Table
         const rankingTableBody = document.getElementById('rankingTableBody');
         validStudents
             .sort((a, b) => b.percentage - a.percentage)
@@ -330,16 +366,15 @@ try {
                 const row = document.createElement('tr');
                 row.className = "hover:bg-slate-50 transition-colors";
                 row.innerHTML = \`
-                    <td class="p-4 text-slate-500 font-medium">\${idx + 1}</td>
-                    <td class="p-4 font-bold text-slate-800">\${s.name}</td>
-                    <td class="p-4 text-slate-600">\${s.sheet}</td>
-                    <td class="p-4 font-semibold text-slate-800">\${s.total}</td>
-                    <td class="p-4"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">\${p.toFixed(1)}%</span></td>
-                    <td class="p-4">\${getGradeText(p)}</td>
+                    <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">\${idx + 1}</td>
+                    <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">\${s.name}</td>
+                    <td class="p-3 md:p-4 text-slate-600" data-label="المعلم / الفصل">\${s.sheet}</td>
+                    <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="المجموع">\${s.total}</td>
+                    <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">\${p.toFixed(1)}%</span></td>
+                    <td class="p-3 md:p-4" data-label="التقدير">\${getGradeText(p)}</td>
                 \`;
                 rankingTableBody.appendChild(row);
             });
-
     </script>
 </body>
 </html>`;
