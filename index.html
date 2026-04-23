@@ -73,6 +73,25 @@
             <!-- Teacher sections will be injected here -->
         </div>
 
+        <div id="teacherRankingContainer" class="glass p-4 md:p-6 shadow-sm mt-8 md:mt-12 mb-8 md:mb-12">
+            <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">ترتيب المعلمين حسب نسبة الامتياز</h2>
+            <div class="overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white" style="max-height: 600px;">
+                <table class="w-full text-right mobile-card-table">
+                    <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-3 md:p-4 font-bold">الترتيب</th>
+                            <th class="p-3 md:p-4 font-bold">المعلم / الفصل</th>
+                            <th class="p-3 md:p-4 font-bold">إجمالي الطلاب</th>
+                            <th class="p-3 md:p-4 font-bold">عدد الامتياز</th>
+                            <th class="p-3 md:p-4 font-bold">نسبة الامتياز</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacherRankingTableBody" class="divide-y divide-slate-100">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div id="allStudentsRankingContainer" class="glass p-4 md:p-6 shadow-sm mt-8 md:mt-12 mb-8 md:mb-12">
             <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">ترتيب جميع الطلاب حسب النسبة</h2>
             <div class="overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white" style="max-height: 600px;">
@@ -262,6 +281,39 @@
                     }
                 }
             });
+        });
+
+        const teacherRankingTableBody = document.getElementById('teacherRankingTableBody');
+        const teacherStats = Object.keys(teacherData).map(teacher => {
+            const data = teacherData[teacher];
+            const excellentCount = data.grades['امتياز (90-100%)'];
+            const excellentPercentage = data.total > 0 ? (excellentCount / data.total) * 100 : 0;
+            return {
+                name: teacher,
+                total: data.total,
+                excellentCount: excellentCount,
+                excellentPercentage: excellentPercentage
+            };
+        }).filter(t => t.total > 0);
+
+        teacherStats.sort((a, b) => {
+            if (b.excellentPercentage !== a.excellentPercentage) {
+                return b.excellentPercentage - a.excellentPercentage;
+            }
+            return b.excellentCount - a.excellentCount;
+        });
+
+        teacherStats.forEach((t, idx) => {
+            const row = document.createElement('tr');
+            row.className = "hover:bg-slate-50 transition-colors";
+            row.innerHTML = `
+                <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
+                <td class="p-3 md:p-4 font-bold text-slate-800" data-label="المعلم / الفصل">${t.name}</td>
+                <td class="p-3 md:p-4 text-slate-600" data-label="إجمالي الطلاب">${t.total}</td>
+                <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="عدد الامتياز">${t.excellentCount}</td>
+                <td class="p-3 md:p-4" data-label="نسبة الامتياز"><span class="bg-slate-100 text-emerald-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${t.excellentPercentage.toFixed(1)}%</span></td>
+            `;
+            teacherRankingTableBody.appendChild(row);
         });
 
         const rankingTableBody = document.getElementById('rankingTableBody');
