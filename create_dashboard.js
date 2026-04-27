@@ -3,6 +3,22 @@ const fs = require("fs");
 
 const filePath =
   "C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx";
+
+function normalizeArabic(str) {
+  if (!str) return "";
+  return str
+    .trim()
+    .replace(/[أإآ]/g, "ا")
+    .replace(/[ةه]/g, "ه")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function cleanTeacherName(name) {
+  if (!name) return "غير معروف";
+  // Remove common prefixes/suffixes and symbols
+  return name.trim().replace(/^[-:/\\*\s]+|[-:/\\*\s]+$/g, "").trim();
+}
 try {
   const workbook = xlsx.readFile(filePath);
   const allStudents = [];
@@ -20,12 +36,14 @@ try {
       const rowStr = row.join(" ");
       if (rowStr.includes("مجموعة الأستاذ")) {
         const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
+        let rawName = "";
         if (match) {
-          currentTeacher = match[1].trim();
+          rawName = match[1];
         } else {
           const parts = rowStr.split(":-");
-          currentTeacher = parts[1] ? parts[1].trim() : rowStr;
+          rawName = parts[1] ? parts[1].trim() : rowStr;
         }
+        currentTeacher = cleanTeacherName(rawName);
         continue;
       }
 
@@ -134,10 +152,19 @@ try {
   };
 
   const teacherData = {};
+  const normalizedToDisplay = {};
+
   validStudents.forEach((s) => {
-    if (!teacherData[s.sheet]) {
-      teacherData[s.sheet] = {
-        name: s.sheet,
+    const norm = normalizeArabic(s.sheet);
+    if (!normalizedToDisplay[norm]) {
+      normalizedToDisplay[norm] = s.sheet;
+    }
+    const teacherKey = normalizedToDisplay[norm];
+    s.sheet = teacherKey; // Unify the name for all references
+
+    if (!teacherData[teacherKey]) {
+      teacherData[teacherKey] = {
+        name: teacherKey,
         students: [],
         grades: {
           "امتياز (90-100%)": 0,
@@ -149,14 +176,14 @@ try {
         total: 0,
       };
     }
-    teacherData[s.sheet].students.push(s);
+    teacherData[teacherKey].students.push(s);
     const p = s.percentage * 100;
-    if (p >= 90) teacherData[s.sheet].grades["امتياز (90-100%)"]++;
-    else if (p >= 80) teacherData[s.sheet].grades["جيد جدا (80-89%)"]++;
-    else if (p >= 70) teacherData[s.sheet].grades["جيد (70-79%)"]++;
-    else if (p >= 50) teacherData[s.sheet].grades["مقبول (50-69%)"]++;
-    else teacherData[s.sheet].grades["راسب (أقل من 50%)"]++;
-    teacherData[s.sheet].total++;
+    if (p >= 90) teacherData[teacherKey].grades["امتياز (90-100%)"]++;
+    else if (p >= 80) teacherData[teacherKey].grades["جيد جدا (80-89%)"]++;
+    else if (p >= 70) teacherData[teacherKey].grades["جيد (70-79%)"]++;
+    else if (p >= 50) teacherData[teacherKey].grades["مقبول (50-69%)"]++;
+    else teacherData[teacherKey].grades["راسب (أقل من 50%)"]++;
+    teacherData[teacherKey].total++;
   });
 
   let teachersDetailedHTML = "";
@@ -603,15 +630,15 @@ try {
                 document.getElementById('managerGlobalSearch').classList.remove('hidden');
                 document.getElementById('teacherRankingContainer').classList.remove('hidden');
                 document.getElementById('allStudentsRankingContainer').classList.remove('hidden');
-                // Show all teacher sections for manager
                 document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('hidden'));
                 setTimeout(initializeCharts, 100);
             } else if (role === 'teacher') {
                 document.getElementById('teacherSelectView').classList.remove('hidden');
                 document.getElementById('dashboardContent').classList.remove('hidden');
-                // Hide all teacher sections until one is selected
                 document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
-                document.getElementById('teacherDropdown').value = "";
+                
+                const dropdown = document.getElementById("teacherDropdown");
+                dropdown.value = "";
             } else if (role === 'student') {
                 document.getElementById('studentSearchView').classList.remove('hidden');
                 populateStudentTeacherDropdown();
@@ -626,11 +653,29 @@ try {
         }
 
         async function onTeacherSelected() {
-            const selected = document.getElementById('teacherDropdown').value;
+            const dropdown = document.getElementById('teacherDropdown');
+            const selected = dropdown.value;
             if (!selected) return;
 
+            // Device Locking Logic
+            let teacherLoginCount = parseInt(localStorage.getItem("teacherLoginCount_2025") || "0");
+            const lockedTeacher = localStorage.getItem("lockedTeacher_2025");
+            
+            if (lockedTeacher && lockedTeacher !== selected) {
+                if (teacherLoginCount >= 1) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "تنبيه",
+                        text: "عفواً، لا يمكنك تسجيل الدخول لمعلم آخر على هذا الجهاز (مسموح لمعلم واحد فقط).",
+                        confirmButtonText: "موافق",
+                        confirmButtonColor: "#0ea5e9",
+                    });
+                    dropdown.value = lockedTeacher || "";
+                    return;
+                }
+            }
             const expectedPassword = selected;
-            const { isConfirmed } = await Swal.fire({
+            const { isConfirmed, value: passwordValue } = await Swal.fire({
                 title: 'كلمة مرور المعلم',
                 input: 'password',
                 inputLabel: 'أدخل كلمة المرور الخاصة بالمعلم المحدد',
@@ -641,6 +686,7 @@ try {
                 showCancelButton: true,
                 confirmButtonColor: '#0ea5e9',
                 cancelButtonColor: '#ef4444',
+                allowOutsideClick: false,
                 didOpen: () => {
                     const passwordInput = Swal.getInput();
                     const toggleBtn = document.getElementById('toggleTeacherPasswordBtn');
@@ -651,18 +697,24 @@ try {
                         toggleBtn.textContent = isHidden ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور';
                     });
                 },
-                preConfirm: (passwordValue) => {
-                    if ((passwordValue || '') !== expectedPassword) {
+                preConfirm: (val) => {
+                    if ((val || '') !== expectedPassword) {
                         Swal.showValidationMessage('كلمة المرور غير صحيحة لهذا المعلم.');
                         return false;
                     }
-                    return true;
+                    return val;
                 }
             });
 
             if (!isConfirmed) {
-                document.getElementById('teacherDropdown').value = '';
+                const last = localStorage.getItem("lockedTeacher_2025");
+                dropdown.value = last || "";
                 return;
+            }
+            // Lock the device to this teacher on successful login
+            if (lockedTeacher !== selected) {
+                localStorage.setItem("teacherLoginCount_2025", "1");
+                localStorage.setItem("lockedTeacher_2025", selected);
             }
 
             document.querySelectorAll('.teacher-section').forEach(el => {
@@ -715,39 +767,35 @@ try {
             return '<span class="text-red-600 font-bold">راسب</span>';
         }
 
-                
         function populateStudentTeacherDropdown() {
             const teacherDropdown = document.getElementById('studentTeacherDropdown');
-            const studentDropdown = document.getElementById('studentDropdown');
-            const uniqueTeachers = [...new Set(allStudentsData.map(s => s.sheet))].sort((a, b) => a.localeCompare(b, 'ar'));
-
-            teacherDropdown.innerHTML = '<option value="">-- اختر المعلم --</option>' +
-                uniqueTeachers.map(t => '<option value="' + t + '">' + t + '</option>').join('');
-            studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>';
-            studentDropdown.disabled = true;
-            document.getElementById('studentSelectionError').classList.add('hidden');
-            document.getElementById('studentResultCard').classList.add('hidden');
+            const teachers = [...new Set(allStudentsData.map(s => s.sheet))].sort();
+            teacherDropdown.innerHTML = '<option value="">-- اختر المعلم --</option>';
+            teachers.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                teacherDropdown.appendChild(opt);
+            });
         }
 
         function onStudentTeacherSelected() {
             const teacher = document.getElementById('studentTeacherDropdown').value;
             const studentDropdown = document.getElementById('studentDropdown');
-            document.getElementById('studentSelectionError').classList.add('hidden');
-            document.getElementById('studentResultCard').classList.add('hidden');
-
-            if (!teacher) {
-                studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>';
+            studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>';
+            
+            if (teacher) {
+                const students = allStudentsData.filter(s => s.sheet === teacher).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+                students.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name;
+                    studentDropdown.appendChild(opt);
+                });
+                studentDropdown.disabled = false;
+            } else {
                 studentDropdown.disabled = true;
-                return;
             }
-
-            const studentsInTeacher = allStudentsData
-                .filter(s => s.sheet === teacher)
-                .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-
-            studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>' +
-                studentsInTeacher.map(s => '<option value="' + s.name + '">' + s.name + '</option>').join('');
-            studentDropdown.disabled = false;
         }
 
         function showSelectedStudentResult() {
@@ -759,25 +807,48 @@ try {
                 return;
             }
 
+            let searchCount = parseInt(localStorage.getItem('studentSearchCount_2025') || '0');
+            const searchedName = teacher + '|' + studentName;
+            const lastSearched = localStorage.getItem('lastSearchedStudent_2025');
+
+            if (lastSearched !== searchedName) {
+                if (searchCount >= 3) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'تنبيه',
+                        text: 'لقد استنفدت عدد مرات البحث المتاحة (3 مرات كحد أقصى).',
+                        confirmButtonText: 'موافق',
+                        confirmButtonColor: '#9333ea',
+                    });
+                    return;
+                }
+            }
+
             const student = allStudentsData.find(s => s.sheet === teacher && s.name === studentName);
             if (!student) {
                 document.getElementById('studentSelectionError').classList.remove('hidden');
                 return;
             }
 
+            if (lastSearched !== searchedName) {
+                searchCount++;
+                localStorage.setItem('studentSearchCount_2025', searchCount);
+                localStorage.setItem('lastSearchedStudent_2025', searchedName);
+            }
+
             document.getElementById('studentSelectionError').classList.add('hidden');
             const p = (student.percentage * 100).toFixed(1);
             const gradeHtml = getGradeTextJS(student.percentage * 100);
-            document.getElementById('studentResultCard').innerHTML = \`
-                <h3 class="text-xl font-bold text-slate-800 border-b pb-3 mb-6 text-center">نتيجة الطالب</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">الاسم</span><span class="font-bold text-lg text-slate-800">\${student.name}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المعلم / الفصل</span><span class="font-bold text-lg text-slate-800">\${student.sheet}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المجموع</span><span class="font-bold text-xl text-blue-700">\${student.total}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">النسبة</span><span class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-lg font-bold inline-block">\${p}%</span></div>
-                    <div class="col-span-1 md:col-span-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center mt-2"><span class="text-slate-500 text-sm block mb-2">التقدير العام</span><div class="text-2xl">\${gradeHtml}</div></div>
-                </div>
-            \`;
+            
+            document.getElementById('studentResultCard').innerHTML = '<h3 class="text-xl font-bold text-slate-800 border-b pb-3 mb-4 text-center">نتيجة الطالب</h3>' +
+                '<div class="space-y-3 mb-4 text-center"><p class="text-purple-600 font-bold text-sm">عدد مرات البحث المستخدمة: ' + searchCount + ' من 3</p></div>' +
+                '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">' +
+                    '<div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">الاسم</span><span class="font-bold text-lg text-slate-800">' + student.name + '</span></div>' +
+                    '<div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المعلم / الفصل</span><span class="font-bold text-lg text-slate-800">' + student.sheet + '</span></div>' +
+                    '<div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المجموع</span><span class="font-bold text-xl text-blue-700">' + student.total + '</span></div>' +
+                    '<div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">النسبة</span><span class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-lg font-bold inline-block">' + p + '%</span></div>' +
+                    '<div class="col-span-1 md:col-span-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center mt-2"><span class="text-slate-500 text-sm block mb-2">التقدير العام</span><div class="text-2xl">' + gradeHtml + '</div></div>' +
+                '</div>';
             document.getElementById('studentResultCard').classList.remove('hidden');
         }
     </script>
