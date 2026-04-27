@@ -97,14 +97,20 @@
                 <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <h2 class="text-2xl font-bold text-slate-800 mb-2">ابحث عن نتيجتك</h2>
-                <p class="text-slate-500 mb-6 text-sm">تنبيه: لأسباب أمنية وللحفاظ على الخصوصية، يمكنك البحث وعرض نتيجة <span class="text-red-500 font-bold">3 طلاب كحد أقصى</span> من هذا الجهاز.</p>
-                <div class="flex flex-col md:flex-row gap-3">
-                    <input type="text" id="studentNameInput" class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-slate-800 font-semibold" placeholder="اكتب اسمك بالكامل هنا...">
-                    <button id="studentSearchExecuteBtn" onclick="executeStudentSearch()" class="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md">بحث</button>
-                    <button type="button" onclick="clearStudentSearch()" class="bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-300 transition-colors">مسح</button>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">عرض نتيجة الطالب</h2>
+                <p class="text-slate-500 mb-6 text-sm">اختر المعلم أولاً ثم اختر اسم الطالب من القائمة، ثم اضغط زر عرض النتيجة.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-right">
+                    <select id="studentTeacherDropdown" onchange="onStudentTeacherSelected()" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-slate-800 font-semibold bg-white">
+                        <option value="">-- اختر المعلم --</option>
+                    </select>
+                    <select id="studentDropdown" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-slate-800 font-semibold bg-white" disabled>
+                        <option value="">-- اختر الطالب --</option>
+                    </select>
                 </div>
-                <div id="studentSearchError" class="text-red-500 text-sm mt-3 hidden font-semibold">لم يتم العثور على طالب بهذا الاسم. تأكد من كتابة الاسم ثلاثي أو رباعي بشكل صحيح.</div>
+                <div class="flex justify-center mt-4">
+                    <button id="studentShowResultBtn" onclick="showSelectedStudentResult()" class="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md">عرض النتيجة</button>
+                </div>
+                <div id="studentSelectionError" class="text-red-500 text-sm mt-3 hidden font-semibold">يرجى اختيار المعلم ثم الطالب أولاً.</div>
                 <div id="studentResultCard" class="hidden mt-8 text-right bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-inner animate-fade-in">
                     <!-- Result goes here -->
                 </div>
@@ -8648,16 +8654,10 @@
                 document.getElementById('dashboardContent').classList.remove('hidden');
                 // Hide all teacher sections until one is selected
                 document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
-                
-                const prevTeacher = localStorage.getItem('selectedTeacher_2025');
-                if (prevTeacher) {
-                    document.getElementById('teacherDropdown').value = prevTeacher;
-                    onTeacherSelected();
-                } else {
-                    document.getElementById('teacherDropdown').value = ""; 
-                }
+                document.getElementById('teacherDropdown').value = "";
             } else if (role === 'student') {
                 document.getElementById('studentSearchView').classList.remove('hidden');
+                populateStudentTeacherDropdown();
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -8668,18 +8668,44 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function onTeacherSelected() {
+        async function onTeacherSelected() {
             const selected = document.getElementById('teacherDropdown').value;
             if (!selected) return;
 
-            const previouslySelectedTeacher = localStorage.getItem('selectedTeacher_2025');
-            if (previouslySelectedTeacher && previouslySelectedTeacher !== selected) {
-                Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'عذراً، لقد قمت بتسجيل الدخول كمعلم مسبقاً باسم مختلف. لا يمكنك تغيير الاسم.', confirmButtonText: 'حسناً', confirmButtonColor: '#0ea5e9' });
-                document.getElementById('teacherDropdown').value = previouslySelectedTeacher;
-                onTeacherSelected(); // Recursively call with the correct value
+            const expectedPassword = selected + '123@@##';
+            const { isConfirmed } = await Swal.fire({
+                title: 'كلمة مرور المعلم',
+                input: 'password',
+                inputLabel: 'أدخل كلمة المرور الخاصة بالمعلم المحدد',
+                inputPlaceholder: 'أدخل كلمة المرور',
+                footer: '<button type="button" id="toggleTeacherPasswordBtn" class="text-sm text-sky-600 hover:text-sky-700 font-bold">إظهار كلمة المرور</button>',
+                confirmButtonText: 'دخول',
+                cancelButtonText: 'إلغاء',
+                showCancelButton: true,
+                confirmButtonColor: '#0ea5e9',
+                cancelButtonColor: '#ef4444',
+                didOpen: () => {
+                    const passwordInput = Swal.getInput();
+                    const toggleBtn = document.getElementById('toggleTeacherPasswordBtn');
+                    if (!passwordInput || !toggleBtn) return;
+                    toggleBtn.addEventListener('click', () => {
+                        const isHidden = passwordInput.type === 'password';
+                        passwordInput.type = isHidden ? 'text' : 'password';
+                        toggleBtn.textContent = isHidden ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور';
+                    });
+                },
+                preConfirm: (passwordValue) => {
+                    if ((passwordValue || '') !== expectedPassword) {
+                        Swal.showValidationMessage('كلمة المرور غير صحيحة لهذا المعلم.');
+                        return false;
+                    }
+                    return true;
+                }
+            });
+
+            if (!isConfirmed) {
+                document.getElementById('teacherDropdown').value = '';
                 return;
-            } else {
-                localStorage.setItem('selectedTeacher_2025', selected);
             }
 
             document.querySelectorAll('.teacher-section').forEach(el => {
@@ -8733,28 +8759,56 @@
         }
 
                 
-        function executeStudentSearch() {
-            const queryRaw = document.getElementById('studentNameInput').value.trim();
-            if(queryRaw.length < 3) {
-                Swal.fire({ icon: 'info', title: 'تنبيه', text: 'يرجى كتابة الاسم بشكل صحيح (ثلاثي أو رباعي).', confirmButtonText: 'حسناً', confirmButtonColor: '#9333ea' });
+        function populateStudentTeacherDropdown() {
+            const teacherDropdown = document.getElementById('studentTeacherDropdown');
+            const studentDropdown = document.getElementById('studentDropdown');
+            const uniqueTeachers = [...new Set(allStudentsData.map(s => s.sheet))].sort((a, b) => a.localeCompare(b, 'ar'));
+
+            teacherDropdown.innerHTML = '<option value="">-- اختر المعلم --</option>' +
+                uniqueTeachers.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+            studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>';
+            studentDropdown.disabled = true;
+            document.getElementById('studentSelectionError').classList.add('hidden');
+            document.getElementById('studentResultCard').classList.add('hidden');
+        }
+
+        function onStudentTeacherSelected() {
+            const teacher = document.getElementById('studentTeacherDropdown').value;
+            const studentDropdown = document.getElementById('studentDropdown');
+            document.getElementById('studentSelectionError').classList.add('hidden');
+            document.getElementById('studentResultCard').classList.add('hidden');
+
+            if (!teacher) {
+                studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>';
+                studentDropdown.disabled = true;
                 return;
             }
-            const normQuery = normalizeArabic(queryRaw);
-            const student = allStudentsData.find(s => normalizeArabic(s.name).includes(normQuery));
-            if(!student) {
-                document.getElementById('studentSearchError').classList.remove('hidden');
+
+            const studentsInTeacher = allStudentsData
+                .filter(s => s.sheet === teacher)
+                .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+
+            studentDropdown.innerHTML = '<option value="">-- اختر الطالب --</option>' +
+                studentsInTeacher.map(s => '<option value="' + s.name + '">' + s.name + '</option>').join('');
+            studentDropdown.disabled = false;
+        }
+
+        function showSelectedStudentResult() {
+            const teacher = document.getElementById('studentTeacherDropdown').value;
+            const studentName = document.getElementById('studentDropdown').value;
+
+            if (!teacher || !studentName) {
+                document.getElementById('studentSelectionError').classList.remove('hidden');
                 return;
             }
-            let searchedNames = JSON.parse(localStorage.getItem('searchedStudents_2025') || '[]');
-            if (!searchedNames.includes(student.name)) {
-                if (searchedNames.length >= 3) {
-                    Swal.fire({ icon: 'error', title: 'عفواً', text: 'لقد استنفدت الحد الأقصى (3 مرات) للبحث عن طلاب مختلفين من هذا الجهاز.', confirmButtonText: 'حسناً', confirmButtonColor: '#9333ea' });
-                    return;
-                }
-                searchedNames.push(student.name);
-                localStorage.setItem('searchedStudents_2025', JSON.stringify(searchedNames));
+
+            const student = allStudentsData.find(s => s.sheet === teacher && s.name === studentName);
+            if (!student) {
+                document.getElementById('studentSelectionError').classList.remove('hidden');
+                return;
             }
-            document.getElementById('studentSearchError').classList.add('hidden');
+
+            document.getElementById('studentSelectionError').classList.add('hidden');
             const p = (student.percentage * 100).toFixed(1);
             const gradeHtml = getGradeTextJS(student.percentage * 100);
             document.getElementById('studentResultCard').innerHTML = `
@@ -8769,25 +8823,6 @@
             `;
             document.getElementById('studentResultCard').classList.remove('hidden');
         }
-
-        function clearStudentSearch() {
-            const input = document.getElementById('studentNameInput');
-            input.value = '';
-            document.getElementById('studentSearchError').classList.add('hidden');
-            document.getElementById('studentResultCard').classList.add('hidden');
-            input.focus();
-        }
-
-        document.getElementById('studentNameInput').addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                executeStudentSearch();
-            }
-        });
-
-        document.getElementById('studentNameInput').addEventListener('input', function() {
-            document.getElementById('studentSearchError').classList.add('hidden');
-        });
     </script>
 </body>
 </html>
