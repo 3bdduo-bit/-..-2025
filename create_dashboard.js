@@ -1,158 +1,179 @@
-const xlsx = require('xlsx');
-const fs = require('fs');
+const xlsx = require("xlsx");
+const fs = require("fs");
 
-const filePath = 'C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx';
+const filePath =
+  "C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx";
 try {
   const workbook = xlsx.readFile(filePath);
   const allStudents = [];
-  
+
   // The 'الدرجات' sheet is the main summary organized by teacher sections
-  const mainSheet = workbook.Sheets['الدرجات'];
+  const mainSheet = workbook.Sheets["الدرجات"];
   if (mainSheet) {
     const json = xlsx.utils.sheet_to_json(mainSheet, { header: 1 });
-    let currentTeacher = 'غير معروف';
+    let currentTeacher = "غير معروف";
 
     for (let i = 0; i < json.length; i++) {
-        const row = json[i];
-        if (!row || row.length === 0) continue;
+      const row = json[i];
+      if (!row || row.length === 0) continue;
 
-        const rowStr = row.join(' ');
-        if (rowStr.includes('مجموعة الأستاذ')) {
-            const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
-            if (match) {
-                currentTeacher = match[1].trim();
-            } else {
-                const parts = rowStr.split(':-');
-                currentTeacher = parts[1] ? parts[1].trim() : rowStr;
-            }
-            continue;
+      const rowStr = row.join(" ");
+      if (rowStr.includes("مجموعة الأستاذ")) {
+        const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
+        if (match) {
+          currentTeacher = match[1].trim();
+        } else {
+          const parts = rowStr.split(":-");
+          currentTeacher = parts[1] ? parts[1].trim() : rowStr;
         }
+        continue;
+      }
 
-        const id = row[0];
-        const name = row[1];
-        if (typeof id === 'number' && typeof name === 'string' && name.trim().length > 0 && name !== 'اسم الطالب') {
-            let total = row[6] !== undefined ? row[6] : 0;
-            let percentage = row[7] !== undefined ? row[7] : 0;
-            
-            allStudents.push({
-                sheet: currentTeacher,
-                id: id,
-                name: name.trim(),
-                test1: row[2] || 0,
-                test2: row[3] || 0,
-                test3: row[4] || 0,
-                test4: row[5] || 0,
-                total: total,
-                percentage: percentage
-            });
-        }
+      const id = row[0];
+      const name = row[1];
+      if (
+        typeof id === "number" &&
+        typeof name === "string" &&
+        name.trim().length > 0 &&
+        name !== "اسم الطالب"
+      ) {
+        let total = row[6] !== undefined ? row[6] : 0;
+        let percentage = row[7] !== undefined ? row[7] : 0;
+
+        allStudents.push({
+          sheet: currentTeacher,
+          id: id,
+          name: name.trim(),
+          test1: row[2] || 0,
+          test2: row[3] || 0,
+          test3: row[4] || 0,
+          test4: row[5] || 0,
+          total: total,
+          percentage: percentage,
+        });
+      }
     }
   }
 
   // If we found no students in 'الدرجات', fallback to processing all sheets (old logic)
   if (allStudents.length === 0) {
     for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-        
-        let dataStartIdx = -1;
-        for (let i = 0; i < json.length; i++) {
-          const row = json[i];
-          if (row && row.includes('اسم الطالب')) {
-             for(let j = i+1; j < json.length; j++) {
-                if (json[j] && typeof json[j][1] === 'string' && json[j][1].trim().length > 0 && json[j][1] !== 'اسم الطالب') {
-                    dataStartIdx = j;
-                    break;
-                }
-             }
-             break;
+      const sheet = workbook.Sheets[sheetName];
+      const json = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
+      let dataStartIdx = -1;
+      for (let i = 0; i < json.length; i++) {
+        const row = json[i];
+        if (row && row.includes("اسم الطالب")) {
+          for (let j = i + 1; j < json.length; j++) {
+            if (
+              json[j] &&
+              typeof json[j][1] === "string" &&
+              json[j][1].trim().length > 0 &&
+              json[j][1] !== "اسم الطالب"
+            ) {
+              dataStartIdx = j;
+              break;
+            }
           }
+          break;
         }
-        
-        const extractRow = (row) => {
-            if (!row || !row[1] || typeof row[1] !== 'string') return;
-            if (row[1].includes('مدير المدرسة') || row[1].includes('القيمة العظمى') || row[1].includes('الدرجة العظمي')) return;
-            
-            let total = row[6] !== undefined ? row[6] : 0;
-            let percentage = row[7] !== undefined ? row[7] : 0;
-            if (total > 0 && (!percentage || percentage === 0)) percentage = total / 250;
+      }
 
-            allStudents.push({
-                sheet: sheetName,
-                id: row[0] || '-',
-                name: row[1].trim(),
-                total: total,
-                percentage: percentage
-            });
-        }
+      const extractRow = (row) => {
+        if (!row || !row[1] || typeof row[1] !== "string") return;
+        if (
+          row[1].includes("مدير المدرسة") ||
+          row[1].includes("القيمة العظمى") ||
+          row[1].includes("الدرجة العظمي")
+        )
+          return;
 
-        if (dataStartIdx !== -1) {
-           for (let i = dataStartIdx; i < json.length; i++) extractRow(json[i]);
-        }
+        let total = row[6] !== undefined ? row[6] : 0;
+        let percentage = row[7] !== undefined ? row[7] : 0;
+        if (total > 0 && (!percentage || percentage === 0))
+          percentage = total / 250;
+
+        allStudents.push({
+          sheet: sheetName,
+          id: row[0] || "-",
+          name: row[1].trim(),
+          total: total,
+          percentage: percentage,
+        });
+      };
+
+      if (dataStartIdx !== -1) {
+        for (let i = dataStartIdx; i < json.length; i++) extractRow(json[i]);
+      }
     }
   }
-  
-  const validStudents = allStudents.filter(s => s.total > 0 && s.name);
+
+  const validStudents = allStudents.filter((s) => s.total > 0 && s.name);
   let totalPercentageSum = 0;
   let passCount = 0;
-  validStudents.forEach(s => {
-      const p = s.percentage * 100;
-      totalPercentageSum += p;
-      if(p >= 50) passCount++;
+  validStudents.forEach((s) => {
+    const p = s.percentage * 100;
+    totalPercentageSum += p;
+    if (p >= 50) passCount++;
   });
 
-  const avgScoreStr = validStudents.length ? (totalPercentageSum / validStudents.length).toFixed(1) + '%' : '0%';
-  const passRateStr = validStudents.length ? ((passCount / validStudents.length) * 100).toFixed(1) + '%' : '0%';
+  const avgScoreStr = validStudents.length
+    ? (totalPercentageSum / validStudents.length).toFixed(1) + "%"
+    : "0%";
+  const passRateStr = validStudents.length
+    ? ((passCount / validStudents.length) * 100).toFixed(1) + "%"
+    : "0%";
 
   const getGradeText = (p) => {
-      if(p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
-      if(p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
-      if(p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
-      if(p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
-      return '<span class="text-red-600 font-bold">راسب</span>';
+    if (p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
+    if (p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
+    if (p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
+    if (p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
+    return '<span class="text-red-600 font-bold">راسب</span>';
   };
 
   const teacherData = {};
-  validStudents.forEach(s => {
-      if(!teacherData[s.sheet]) {
-          teacherData[s.sheet] = {
-              name: s.sheet,
-              students: [],
-              grades: {
-                  'امتياز (90-100%)': 0,
-                  'جيد جدا (80-89%)': 0,
-                  'جيد (70-79%)': 0,
-                  'مقبول (50-69%)': 0,
-                  'راسب (أقل من 50%)': 0
-              },
-              total: 0
-          };
-      }
-      teacherData[s.sheet].students.push(s);
-      const p = s.percentage * 100;
-      if(p >= 90) teacherData[s.sheet].grades['امتياز (90-100%)']++;
-      else if(p >= 80) teacherData[s.sheet].grades['جيد جدا (80-89%)']++;
-      else if(p >= 70) teacherData[s.sheet].grades['جيد (70-79%)']++;
-      else if(p >= 50) teacherData[s.sheet].grades['مقبول (50-69%)']++;
-      else teacherData[s.sheet].grades['راسب (أقل من 50%)']++;
-      teacherData[s.sheet].total++;
+  validStudents.forEach((s) => {
+    if (!teacherData[s.sheet]) {
+      teacherData[s.sheet] = {
+        name: s.sheet,
+        students: [],
+        grades: {
+          "امتياز (90-100%)": 0,
+          "جيد جدا (80-89%)": 0,
+          "جيد (70-79%)": 0,
+          "مقبول (50-69%)": 0,
+          "راسب (أقل من 50%)": 0,
+        },
+        total: 0,
+      };
+    }
+    teacherData[s.sheet].students.push(s);
+    const p = s.percentage * 100;
+    if (p >= 90) teacherData[s.sheet].grades["امتياز (90-100%)"]++;
+    else if (p >= 80) teacherData[s.sheet].grades["جيد جدا (80-89%)"]++;
+    else if (p >= 70) teacherData[s.sheet].grades["جيد (70-79%)"]++;
+    else if (p >= 50) teacherData[s.sheet].grades["مقبول (50-69%)"]++;
+    else teacherData[s.sheet].grades["راسب (أقل من 50%)"]++;
+    teacherData[s.sheet].total++;
   });
 
-  let teachersDetailedHTML = '';
+  let teachersDetailedHTML = "";
   const chartConfigs = [];
-  
+
   Object.keys(teacherData).forEach((teacher, idx) => {
-      const data = teacherData[teacher];
-      if (data.total === 0) return;
+    const data = teacherData[teacher];
+    if (data.total === 0) return;
 
-      chartConfigs.push({
-          id: 'detailedChart_' + idx,
-          labels: Object.keys(data.grades),
-          data: Object.values(data.grades),
-          total: data.total
-      });
+    chartConfigs.push({
+      id: "detailedChart_" + idx,
+      labels: Object.keys(data.grades),
+      data: Object.values(data.grades),
+      total: data.total,
+    });
 
-      teachersDetailedHTML += `
+    teachersDetailedHTML += `
       <section class="glass bg-white p-4 md:p-6 shadow-sm rounded-2xl teacher-section hidden" data-teacher-name="${teacher}">
           <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">المعلم / الفصل: ${teacher}</h2>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -175,9 +196,11 @@ try {
                       </thead>
                       <tbody class="divide-y divide-slate-100">`;
 
-      data.students.sort((a, b) => b.total - a.total).forEach((s, sIdx) => {
-          const p = s.percentage * 100;
-          teachersDetailedHTML += `
+    data.students
+      .sort((a, b) => b.total - a.total)
+      .forEach((s, sIdx) => {
+        const p = s.percentage * 100;
+        teachersDetailedHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
               <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="م">${sIdx + 1}</td>
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">${s.name}</td>
@@ -186,31 +209,34 @@ try {
               <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
           </tr>`;
       });
-      teachersDetailedHTML += `</tbody></table></div></div></section>`;
+    teachersDetailedHTML += `</tbody></table></div></div></section>`;
   });
 
-  const teacherStats = Object.keys(teacherData).map(teacher => {
+  const teacherStats = Object.keys(teacherData)
+    .map((teacher) => {
       const data = teacherData[teacher];
-      const excellentCount = data.grades['امتياز (90-100%)'];
-      const excellentPercentage = data.total > 0 ? (excellentCount / data.total) * 100 : 0;
+      const excellentCount = data.grades["امتياز (90-100%)"];
+      const excellentPercentage =
+        data.total > 0 ? (excellentCount / data.total) * 100 : 0;
       return {
-          name: teacher,
-          total: data.total,
-          excellentCount: excellentCount,
-          excellentPercentage: excellentPercentage
+        name: teacher,
+        total: data.total,
+        excellentCount: excellentCount,
+        excellentPercentage: excellentPercentage,
       };
-  }).filter(t => t.total > 0);
+    })
+    .filter((t) => t.total > 0);
 
   teacherStats.sort((a, b) => {
-      if (b.excellentPercentage !== a.excellentPercentage) {
-          return b.excellentPercentage - a.excellentPercentage;
-      }
-      return b.excellentCount - a.excellentCount;
+    if (b.excellentPercentage !== a.excellentPercentage) {
+      return b.excellentPercentage - a.excellentPercentage;
+    }
+    return b.excellentCount - a.excellentCount;
   });
 
-  let teacherRankingHTML = '';
+  let teacherRankingHTML = "";
   teacherStats.forEach((t, idx) => {
-      teacherRankingHTML += `
+    teacherRankingHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
               <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="المعلم / الفصل">${t.name}</td>
@@ -220,8 +246,10 @@ try {
           </tr>`;
   });
 
-  let rankingHTML = '';
-  validStudents.sort((a, b) => b.percentage - a.percentage).forEach((s, idx) => {
+  let rankingHTML = "";
+  validStudents
+    .sort((a, b) => b.percentage - a.percentage)
+    .forEach((s, idx) => {
       const p = s.percentage * 100;
       rankingHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
@@ -232,7 +260,7 @@ try {
               <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${p.toFixed(1)}%</span></td>
               <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
           </tr>`;
-  });
+    });
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -362,7 +390,9 @@ try {
                 </div>
                 <select id="teacherDropdown" onchange="onTeacherSelected()" class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none w-full md:w-72 bg-slate-50 font-bold text-slate-700 cursor-pointer">
                     <option value="">-- اضغط لاختيار اسمك --</option>
-                    ${Object.keys(teacherData).map(t => `<option value="${t}">${t}</option>`).join('')}
+                    ${Object.keys(teacherData)
+                      .map((t) => `<option value="${t}">${t}</option>`)
+                      .join("")}
                 </select>
             </div>
         </div>
@@ -467,9 +497,15 @@ try {
         });
 
         const chartConfigs = ${JSON.stringify(chartConfigs)};
-        const allStudentsData = ${JSON.stringify(validStudents.map(s => ({
-            id: s.id, name: s.name, sheet: s.sheet, total: s.total, percentage: s.percentage
-        })))};
+        const allStudentsData = ${JSON.stringify(
+          validStudents.map((s) => ({
+            id: s.id,
+            name: s.name,
+            sheet: s.sheet,
+            total: s.total,
+            percentage: s.percentage,
+          })),
+        )};
         
         let chartsInitialized = {};
 
@@ -523,42 +559,20 @@ try {
             if (role === 'manager') {
                 const { isConfirmed } = await Swal.fire({
                     title: 'تسجيل دخول المدير',
-                    input: 'text',
-                    inputPlaceholder: 'الرجاء إدخال الرقم القومي للمدير...',
-                    inputAttributes: {
-                        inputmode: 'numeric',
-                        maxlength: '14',
-                        autocapitalize: 'off',
-                        autocomplete: 'off',
-                        autocorrect: 'off',
-                        spellcheck: 'false',
-                        dir: 'ltr'
-                    },
+                    input: 'password',
+                    inputPlaceholder: 'أدخل كلمة مرور المدير',
                     confirmButtonText: 'دخول',
                     cancelButtonText: 'إلغاء',
                     showCancelButton: true,
                     confirmButtonColor: '#3b82f6',
                     cancelButtonColor: '#ef4444',
                     didOpen: () => {
-                        const managerInput = Swal.getInput();
-                        if (!managerInput) return;
-                        managerInput.focus();
-                        managerInput.addEventListener('input', () => {
-                            managerInput.value = managerInput.value.replace(/\D/g, '').slice(0, 14);
-                        });
+                        const input = Swal.getInput();
+                        if (input) input.focus();
                     },
-                    preConfirm: (managerId) => {
-                        const normalizedId = (managerId || '').replace(/\s+/g, '');
-                        if (!/^\d+$/.test(normalizedId)) {
-                            Swal.showValidationMessage('يرجى إدخال أرقام فقط.');
-                            return false;
-                        }
-                        if (normalizedId.length !== 14) {
-                            Swal.showValidationMessage('الرقم القومي يجب أن يكون 14 رقمًا.');
-                            return false;
-                        }
-                        if (normalizedId !== "28608052200699") {
-                            Swal.showValidationMessage('رقم قومي خاطئ. لا تملك صلاحية الدخول كمدير.');
+                    preConfirm: (managerPassword) => {
+                        if ((managerPassword || '') !== "حسين فضالي عويس") {
+                            Swal.showValidationMessage('كلمة مرور المدير غير صحيحة.');
                             return false;
                         }
                         return true;
@@ -615,7 +629,7 @@ try {
             const selected = document.getElementById('teacherDropdown').value;
             if (!selected) return;
 
-            const expectedPassword = selected + '123@@##';
+            const expectedPassword = selected;
             const { isConfirmed } = await Swal.fire({
                 title: 'كلمة مرور المعلم',
                 input: 'password',
@@ -770,8 +784,8 @@ try {
 </body>
 </html>`;
 
-  fs.writeFileSync('index.html', htmlContent);
-  console.log('Dashboard generated successfully at index.html');
+  fs.writeFileSync("index.html", htmlContent);
+  console.log("Dashboard generated successfully at index.html");
 } catch (error) {
-  console.error('Error reading excel file:', error);
+  console.error("Error reading excel file:", error);
 }

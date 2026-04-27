@@ -8600,24 +8600,15 @@
                         const managerInput = Swal.getInput();
                         if (!managerInput) return;
                         managerInput.focus();
-                        managerInput.addEventListener('input', () => {
-                            managerInput.value = managerInput.value.replace(/\D/g, '').slice(0, 14);
-                        });
+                      
                     },
-                    preConfirm: (managerId) => {
-                        const normalizedId = (managerId || '').replace(/\s+/g, '');
-                        if (!/^\d+$/.test(normalizedId)) {
-                            Swal.showValidationMessage('يرجى إدخال أرقام فقط.');
+                    preConfirm: (inputValue) => {
+                        const correctPassword = "أبو عمار";
+                        if (inputValue !== correctPassword) {
+                            Swal.showValidationMessage('كلمة المرور خاطئة.');
                             return false;
                         }
-                        if (normalizedId.length !== 14) {
-                            Swal.showValidationMessage('الرقم القومي يجب أن يكون 14 رقمًا.');
-                            return false;
-                        }
-                        if (normalizedId !== "28608052200699") {
-                            Swal.showValidationMessage('رقم قومي خاطئ. لا تملك صلاحية الدخول كمدير.');
-                            return false;
-                        }
+                        
                         return true;
                     }
                 });
@@ -8672,7 +8663,7 @@
             const selected = document.getElementById('teacherDropdown').value;
             if (!selected) return;
 
-            const expectedPassword = selected + '123@@##';
+            const expectedPassword = selected;
             const { isConfirmed } = await Swal.fire({
                 title: 'كلمة مرور المعلم',
                 input: 'password',
