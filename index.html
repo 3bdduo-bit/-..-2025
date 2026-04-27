@@ -75,7 +75,7 @@
                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"></path></svg>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 mb-2">دخول كطالب</h2>
-                <p class="text-slate-500 text-sm">استعلام عن نتيجتك الشخصية ومجموعك الكلي (متاح مرة واحدة فقط)</p>
+                <p class="text-slate-500 text-sm">استعلام عن نتيجتك الشخصية ومجموعك الكلي (متاح 3 مرات كحد أقصى)</p>
             </button>
         </div>
     </div>
@@ -97,7 +97,7 @@
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 mb-2">ابحث عن نتيجتك</h2>
-                <p class="text-slate-500 mb-6 text-sm">تنبيه: لأسباب أمنية وللحفاظ على الخصوصية، يمكنك البحث وعرض نتيجتك <span class="text-red-500 font-bold">مرة واحدة فقط</span> من هذا الجهاز.</p>
+                <p class="text-slate-500 mb-6 text-sm">تنبيه: لأسباب أمنية وللحفاظ على الخصوصية، يمكنك البحث وعرض نتيجة <span class="text-red-500 font-bold">3 طلاب كحد أقصى</span> من هذا الجهاز.</p>
                 <div class="flex flex-col md:flex-row gap-3">
                     <input type="text" id="studentNameInput" class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-slate-800 font-semibold" placeholder="اكتب اسمك بالكامل هنا...">
                     <button id="studentSearchExecuteBtn" onclick="executeStudentSearch()" class="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md">بحث</button>
@@ -8569,6 +8569,14 @@
 
         // Logic for role switching
         function setRole(role) {
+            if (role === 'manager') {
+                const managerId = prompt("الرجاء إدخال الرقم القومي للمدير:");
+                if (managerId !== "28608052200699") {
+                    alert("رقم قومي خاطئ. لا تملك صلاحية الدخول كمدير.");
+                    return;
+                }
+            }
+
             // Hide landing screen
             document.getElementById('roleSelectionScreen').classList.add('hidden');
             // Show main application container
@@ -8597,7 +8605,14 @@
                 document.getElementById('dashboardContent').classList.remove('hidden');
                 // Hide all teacher sections until one is selected
                 document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
-                document.getElementById('teacherDropdown').value = ""; 
+                
+                const prevTeacher = localStorage.getItem('selectedTeacher_2025');
+                if (prevTeacher) {
+                    document.getElementById('teacherDropdown').value = prevTeacher;
+                    onTeacherSelected();
+                } else {
+                    document.getElementById('teacherDropdown').value = ""; 
+                }
             } else if (role === 'student') {
                 document.getElementById('studentSearchView').classList.remove('hidden');
             }
@@ -8612,6 +8627,18 @@
 
         function onTeacherSelected() {
             const selected = document.getElementById('teacherDropdown').value;
+            if (!selected) return;
+
+            const previouslySelectedTeacher = localStorage.getItem('selectedTeacher_2025');
+            if (previouslySelectedTeacher && previouslySelectedTeacher !== selected) {
+                alert("عذراً، لقد قمت بتسجيل الدخول كمعلم مسبقاً باسم مختلف. لا يمكنك تغيير الاسم.");
+                document.getElementById('teacherDropdown').value = previouslySelectedTeacher;
+                onTeacherSelected(); // Recursively call with the correct value
+                return;
+            } else {
+                localStorage.setItem('selectedTeacher_2025', selected);
+            }
+
             document.querySelectorAll('.teacher-section').forEach(el => {
                 if (el.getAttribute('data-teacher-name') === selected) {
                     el.classList.remove('hidden');
@@ -8651,11 +8678,6 @@
         }
 
         function executeStudentSearch() {
-            if (localStorage.getItem('hasSearchedStudent_2025')) {
-                alert("عذراً، لقد قمت بالاستعلام عن نتيجتك مسبقاً من هذا الجهاز. للحفاظ على الخصوصية لا يسمح بالبحث المتكرر.");
-                return;
-            }
-            
             const query = document.getElementById('studentNameInput').value.trim();
             if(query.length < 3) {
                 alert("يرجى كتابة الاسم بشكل صحيح (ثلاثي أو رباعي).");
@@ -8667,13 +8689,19 @@
                 document.getElementById('studentSearchError').classList.remove('hidden');
                 return;
             }
+
+            let searchedNames = JSON.parse(localStorage.getItem('searchedStudents_2025') || '[]');
+            
+            if (!searchedNames.includes(student.name)) {
+                if (searchedNames.length >= 3) {
+                    alert("عذراً، لقد استنفدت الحد الأقصى (3 مرات) للبحث عن طلاب مختلفين من هذا الجهاز.");
+                    return;
+                }
+                searchedNames.push(student.name);
+                localStorage.setItem('searchedStudents_2025', JSON.stringify(searchedNames));
+            }
             
             document.getElementById('studentSearchError').classList.add('hidden');
-            localStorage.setItem('hasSearchedStudent_2025', 'true');
-            
-            document.getElementById('studentNameInput').disabled = true;
-            document.getElementById('studentSearchExecuteBtn').disabled = true;
-            document.getElementById('studentSearchExecuteBtn').classList.add('opacity-50', 'cursor-not-allowed');
             
             const p = (student.percentage * 100).toFixed(1);
             const gradeHtml = getGradeTextJS(student.percentage * 100);
