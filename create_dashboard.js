@@ -105,7 +105,7 @@ try {
   const passRateStr = validStudents.length ? ((passCount / validStudents.length) * 100).toFixed(1) + '%' : '0%';
 
   const getGradeText = (p) => {
-      if(p >= 90) return '<span class="text-emerald-600 font-bold">امتياز</span>';
+      if(p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
       if(p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
       if(p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
       if(p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
@@ -216,7 +216,7 @@ try {
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="المعلم / الفصل">${t.name}</td>
               <td class="p-3 md:p-4 text-slate-600" data-label="إجمالي الطلاب">${t.total}</td>
               <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="عدد الامتياز">${t.excellentCount}</td>
-              <td class="p-3 md:p-4" data-label="نسبة الامتياز"><span class="bg-slate-100 text-emerald-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${t.excellentPercentage.toFixed(1)}%</span></td>
+              <td class="p-3 md:p-4" data-label="نسبة الامتياز"><span class="bg-slate-100 text-sky-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${t.excellentPercentage.toFixed(1)}%</span></td>
           </tr>`;
   });
 
@@ -244,6 +244,7 @@ try {
     <title>لوحة بيانات مدرسة التربية بالقرآن الكريم</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
@@ -298,8 +299,8 @@ try {
                 <p class="text-slate-500 text-sm">عرض لوحة التحكم الشاملة والبحث المتقدم في جميع الفصول</p>
             </button>
             
-            <button onclick="setRole('teacher')" class="glass bg-white p-8 flex flex-col items-center text-center hover:-translate-y-2 hover:shadow-xl transition-all duration-300 group cursor-pointer border-2 border-transparent hover:border-emerald-500 rounded-2xl shadow-sm">
-                <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <button onclick="setRole('teacher')" class="glass bg-white p-8 flex flex-col items-center text-center hover:-translate-y-2 hover:shadow-xl transition-all duration-300 group cursor-pointer border-2 border-transparent hover:border-sky-500 rounded-2xl shadow-sm">
+                <div class="w-20 h-20 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 mb-2">دخول كمعلم</h2>
@@ -337,6 +338,7 @@ try {
                 <div class="flex flex-col md:flex-row gap-3">
                     <input type="text" id="studentNameInput" class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-slate-800 font-semibold" placeholder="اكتب اسمك بالكامل هنا...">
                     <button id="studentSearchExecuteBtn" onclick="executeStudentSearch()" class="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-md">بحث</button>
+                    <button type="button" onclick="clearStudentSearch()" class="bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold hover:bg-slate-300 transition-colors">مسح</button>
                 </div>
                 <div id="studentSearchError" class="text-red-500 text-sm mt-3 hidden font-semibold">لم يتم العثور على طالب بهذا الاسم. تأكد من كتابة الاسم ثلاثي أو رباعي بشكل صحيح.</div>
                 <div id="studentResultCard" class="hidden mt-8 text-right bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-inner animate-fade-in">
@@ -352,7 +354,7 @@ try {
                     <h2 class="text-xl font-bold text-slate-800">مرحباً بك أستاذي الفاضل</h2>
                     <p class="text-sm text-slate-500">اختر اسمك من القائمة لعرض بيانات طلاب فصلك حصرياً</p>
                 </div>
-                <select id="teacherDropdown" onchange="onTeacherSelected()" class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none w-full md:w-72 bg-slate-50 font-bold text-slate-700 cursor-pointer">
+                <select id="teacherDropdown" onchange="onTeacherSelected()" class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none w-full md:w-72 bg-slate-50 font-bold text-slate-700 cursor-pointer">
                     <option value="">-- اضغط لاختيار اسمك --</option>
                     ${Object.keys(teacherData).map(t => `<option value="${t}">${t}</option>`).join('')}
                 </select>
@@ -376,9 +378,9 @@ try {
                         <p class="text-xs md:text-sm text-blue-600 font-semibold mb-1">متوسط النسبة</p>
                         <p class="text-xl md:text-3xl font-bold text-blue-700">${avgScoreStr}</p>
                     </div>
-                    <div class="bg-emerald-50 p-3 md:px-6 md:py-4 rounded-xl border border-emerald-200 text-center col-span-2 md:col-span-1">
-                        <p class="text-xs md:text-sm text-emerald-600 font-semibold mb-1">نسبة النجاح</p>
-                        <p class="text-xl md:text-3xl font-bold text-emerald-700">${passRateStr}</p>
+                    <div class="bg-sky-50 p-3 md:px-6 md:py-4 rounded-xl border border-sky-200 text-center col-span-2 md:col-span-1">
+                        <p class="text-xs md:text-sm text-sky-600 font-semibold mb-1">نسبة النجاح</p>
+                        <p class="text-xl md:text-3xl font-bold text-sky-700">${passRateStr}</p>
                     </div>
                 </div>
             </header>
@@ -480,7 +482,7 @@ try {
                                 labels: config.labels,
                                 datasets: [{
                                     data: config.data,
-                                    backgroundColor: ['#030504ff', '#3b82f6', '#eab308', '#f97316', '#ef4444'],
+                                    backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444'],
                                     borderWidth: 1,
                                     borderColor: '#ffffff'
                                 }]
@@ -511,11 +513,52 @@ try {
         }
 
         // Logic for role switching
-        function setRole(role) {
+        async function setRole(role) {
             if (role === 'manager') {
-                const managerId = prompt("الرجاء إدخال الرقم القومي للمدير:");
-                if (managerId !== "28608052200699") {
-                    alert("رقم قومي خاطئ. لا تملك صلاحية الدخول كمدير.");
+                const { isConfirmed } = await Swal.fire({
+                    title: 'تسجيل دخول المدير',
+                    input: 'text',
+                    inputPlaceholder: 'الرجاء إدخال الرقم القومي للمدير...',
+                    inputAttributes: {
+                        inputmode: 'numeric',
+                        maxlength: '14',
+                        autocapitalize: 'off',
+                        autocomplete: 'off',
+                        autocorrect: 'off',
+                        spellcheck: 'false',
+                        dir: 'ltr'
+                    },
+                    confirmButtonText: 'دخول',
+                    cancelButtonText: 'إلغاء',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3b82f6',
+                    cancelButtonColor: '#ef4444',
+                    didOpen: () => {
+                        const managerInput = Swal.getInput();
+                        if (!managerInput) return;
+                        managerInput.focus();
+                        managerInput.addEventListener('input', () => {
+                            managerInput.value = managerInput.value.replace(/\D/g, '').slice(0, 14);
+                        });
+                    },
+                    preConfirm: (managerId) => {
+                        const normalizedId = (managerId || '').replace(/\s+/g, '');
+                        if (!/^\d+$/.test(normalizedId)) {
+                            Swal.showValidationMessage('يرجى إدخال أرقام فقط.');
+                            return false;
+                        }
+                        if (normalizedId.length !== 14) {
+                            Swal.showValidationMessage('الرقم القومي يجب أن يكون 14 رقمًا.');
+                            return false;
+                        }
+                        if (normalizedId !== "28608052200699") {
+                            Swal.showValidationMessage('رقم قومي خاطئ. لا تملك صلاحية الدخول كمدير.');
+                            return false;
+                        }
+                        return true;
+                    }
+                });
+                if (!isConfirmed) {
                     return;
                 }
             }
@@ -574,7 +617,7 @@ try {
 
             const previouslySelectedTeacher = localStorage.getItem('selectedTeacher_2025');
             if (previouslySelectedTeacher && previouslySelectedTeacher !== selected) {
-                alert("عذراً، لقد قمت بتسجيل الدخول كمعلم مسبقاً باسم مختلف. لا يمكنك تغيير الاسم.");
+                Swal.fire({ icon: 'warning', title: 'تنبيه', text: 'عذراً، لقد قمت بتسجيل الدخول كمعلم مسبقاً باسم مختلف. لا يمكنك تغيير الاسم.', confirmButtonText: 'حسناً', confirmButtonColor: '#0ea5e9' });
                 document.getElementById('teacherDropdown').value = previouslySelectedTeacher;
                 onTeacherSelected(); // Recursively call with the correct value
                 return;
@@ -592,15 +635,21 @@ try {
             if(selected) setTimeout(initializeCharts, 100);
         }
 
+                
+        function normalizeArabic(str) {
+            return str.replace(/[أإآ]/g, 'ا').replace(/[ةه]/g, 'ه').toLowerCase();
+        }
+        
+        
         function filterAllStudents() {
-            const query = document.getElementById('managerSearchInput').value.toLowerCase();
+            const queryRaw = document.getElementById('managerSearchInput').value;
+            const query = normalizeArabic(queryRaw);
             const rows = document.querySelectorAll('#allStudentsTable tbody tr');
             let found = false;
             rows.forEach(row => {
-                // Name is in the second column (index 1) for mobile layout as well
                 const nameCell = row.children[1];
                 if (nameCell) {
-                    const name = nameCell.textContent.toLowerCase();
+                    const name = normalizeArabic(nameCell.textContent);
                     if(name.includes(query)) {
                         row.style.display = '';
                         found = true;
@@ -612,43 +661,45 @@ try {
             document.getElementById('noStudentsFound').style.display = found ? 'none' : 'block';
         }
 
+        
+    
+
+
+
+
         function getGradeTextJS(p) {
-            if(p >= 90) return '<span class="text-emerald-600 font-bold">امتياز</span>';
+            if(p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
             if(p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
             if(p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
             if(p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
             return '<span class="text-red-600 font-bold">راسب</span>';
         }
 
+                
         function executeStudentSearch() {
-            const query = document.getElementById('studentNameInput').value.trim();
-            if(query.length < 3) {
-                alert("يرجى كتابة الاسم بشكل صحيح (ثلاثي أو رباعي).");
+            const queryRaw = document.getElementById('studentNameInput').value.trim();
+            if(queryRaw.length < 3) {
+                Swal.fire({ icon: 'info', title: 'تنبيه', text: 'يرجى كتابة الاسم بشكل صحيح (ثلاثي أو رباعي).', confirmButtonText: 'حسناً', confirmButtonColor: '#9333ea' });
                 return;
             }
-            
-            const student = allStudentsData.find(s => s.name.includes(query));
+            const normQuery = normalizeArabic(queryRaw);
+            const student = allStudentsData.find(s => normalizeArabic(s.name).includes(normQuery));
             if(!student) {
                 document.getElementById('studentSearchError').classList.remove('hidden');
                 return;
             }
-
             let searchedNames = JSON.parse(localStorage.getItem('searchedStudents_2025') || '[]');
-            
             if (!searchedNames.includes(student.name)) {
                 if (searchedNames.length >= 3) {
-                    alert("عذراً، لقد استنفدت الحد الأقصى (3 مرات) للبحث عن طلاب مختلفين من هذا الجهاز.");
+                    Swal.fire({ icon: 'error', title: 'عفواً', text: 'لقد استنفدت الحد الأقصى (3 مرات) للبحث عن طلاب مختلفين من هذا الجهاز.', confirmButtonText: 'حسناً', confirmButtonColor: '#9333ea' });
                     return;
                 }
                 searchedNames.push(student.name);
                 localStorage.setItem('searchedStudents_2025', JSON.stringify(searchedNames));
             }
-            
             document.getElementById('studentSearchError').classList.add('hidden');
-            
             const p = (student.percentage * 100).toFixed(1);
             const gradeHtml = getGradeTextJS(student.percentage * 100);
-            
             document.getElementById('studentResultCard').innerHTML = \`
                 <h3 class="text-xl font-bold text-slate-800 border-b pb-3 mb-6 text-center">نتيجة الطالب</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
@@ -661,6 +712,25 @@ try {
             \`;
             document.getElementById('studentResultCard').classList.remove('hidden');
         }
+
+        function clearStudentSearch() {
+            const input = document.getElementById('studentNameInput');
+            input.value = '';
+            document.getElementById('studentSearchError').classList.add('hidden');
+            document.getElementById('studentResultCard').classList.add('hidden');
+            input.focus();
+        }
+
+        document.getElementById('studentNameInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                executeStudentSearch();
+            }
+        });
+
+        document.getElementById('studentNameInput').addEventListener('input', function() {
+            document.getElementById('studentSearchError').classList.add('hidden');
+        });
     </script>
 </body>
 </html>`;
