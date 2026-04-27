@@ -8583,13 +8583,13 @@
                     input: 'text',
                     inputPlaceholder: ' إدخال كلمة المرور',
                     inputAttributes: {
-                        inputmode: 'numeric',
+                        inputmode: 'text',
                         maxlength: '100',
                         autocapitalize: 'off',
                         autocomplete: 'off',
                         autocorrect: 'off',
                         spellcheck: 'false',
-                        dir: 'ltr'
+                        dir: 'rtl'
                     },
                     confirmButtonText: 'دخول',
                     cancelButtonText: 'إلغاء',
@@ -8603,7 +8603,7 @@
                       
                     },
                     preConfirm: (inputValue) => {
-                        const correctPassword = "أبو عمار";
+                        const correctPassword = "أبو عمار" ;
                         if (inputValue !== correctPassword) {
                             Swal.showValidationMessage('كلمة المرور خاطئة.');
                             return false;
