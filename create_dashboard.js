@@ -482,7 +482,7 @@ try {
                                 labels: config.labels,
                                 datasets: [{
                                     data: config.data,
-                                    backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444'],
+                                    backgroundColor: ['#3b82f6', '#eab308', '#f97316', '#ef4444', '#6b7280'],
                                     borderWidth: 1,
                                     borderColor: '#ffffff'
                                 }]
