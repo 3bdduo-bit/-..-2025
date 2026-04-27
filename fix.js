@@ -1,240 +1,19 @@
-const xlsx = require('xlsx');
 const fs = require('fs');
+let code = fs.readFileSync('create_dashboard.js', 'utf8');
 
-const filePath = 'C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx';
-try {
-  const workbook = xlsx.readFile(filePath);
-  const allStudents = [];
-  
-  // The 'الدرجات' sheet is the main summary organized by teacher sections
-  const mainSheet = workbook.Sheets['الدرجات'];
-  if (mainSheet) {
-    const json = xlsx.utils.sheet_to_json(mainSheet, { header: 1 });
-    let currentTeacher = 'غير معروف';
+// Find where the rankingHTML generation ends
+const idx = code.indexOf('          </tr>`;\\n  });');
+if (idx === -1) {
+    console.error("Could not find the end of rankingHTML generation");
+    process.exit(1);
+}
 
-    for (let i = 0; i < json.length; i++) {
-        const row = json[i];
-        if (!row || row.length === 0) continue;
+// Keep everything up to the rankingHTML loop end
+const goodPart = code.substring(0, idx + 23); // length of '          </tr>`;\\n  });' is 23
 
-        const rowStr = row.join(' ');
-        if (rowStr.includes('مجموعة الأستاذ')) {
-            const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
-            if (match) {
-                currentTeacher = match[1].trim();
-            } else {
-                const parts = rowStr.split(':-');
-                currentTeacher = parts[1] ? parts[1].trim() : rowStr;
-            }
-            continue;
-        }
+const newPart = `
 
-        const id = row[0];
-        const name = row[1];
-        if (typeof id === 'number' && typeof name === 'string' && name.trim().length > 0 && name !== 'اسم الطالب') {
-            let total = row[6] !== undefined ? row[6] : 0;
-            let percentage = row[7] !== undefined ? row[7] : 0;
-            
-            allStudents.push({
-                sheet: currentTeacher,
-                id: id,
-                name: name.trim(),
-                test1: row[2] || 0,
-                test2: row[3] || 0,
-                test3: row[4] || 0,
-                test4: row[5] || 0,
-                total: total,
-                percentage: percentage
-            });
-        }
-    }
-  }
-
-  // If we found no students in 'الدرجات', fallback to processing all sheets (old logic)
-  if (allStudents.length === 0) {
-    for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-        
-        let dataStartIdx = -1;
-        for (let i = 0; i < json.length; i++) {
-          const row = json[i];
-          if (row && row.includes('اسم الطالب')) {
-             for(let j = i+1; j < json.length; j++) {
-                if (json[j] && typeof json[j][1] === 'string' && json[j][1].trim().length > 0 && json[j][1] !== 'اسم الطالب') {
-                    dataStartIdx = j;
-                    break;
-                }
-             }
-             break;
-          }
-        }
-        
-        const extractRow = (row) => {
-            if (!row || !row[1] || typeof row[1] !== 'string') return;
-            if (row[1].includes('مدير المدرسة') || row[1].includes('القيمة العظمى') || row[1].includes('الدرجة العظمي')) return;
-            
-            let total = row[6] !== undefined ? row[6] : 0;
-            let percentage = row[7] !== undefined ? row[7] : 0;
-            if (total > 0 && (!percentage || percentage === 0)) percentage = total / 250;
-
-            allStudents.push({
-                sheet: sheetName,
-                id: row[0] || '-',
-                name: row[1].trim(),
-                total: total,
-                percentage: percentage
-            });
-        }
-
-        if (dataStartIdx !== -1) {
-           for (let i = dataStartIdx; i < json.length; i++) extractRow(json[i]);
-        }
-    }
-  }
-  
-  const validStudents = allStudents.filter(s => s.total > 0 && s.name);
-  let totalPercentageSum = 0;
-  let passCount = 0;
-  validStudents.forEach(s => {
-      const p = s.percentage * 100;
-      totalPercentageSum += p;
-      if(p >= 50) passCount++;
-  });
-
-  const avgScoreStr = validStudents.length ? (totalPercentageSum / validStudents.length).toFixed(1) + '%' : '0%';
-  const passRateStr = validStudents.length ? ((passCount / validStudents.length) * 100).toFixed(1) + '%' : '0%';
-
-  const getGradeText = (p) => {
-      if(p >= 90) return '<span class="text-emerald-600 font-bold">امتياز</span>';
-      if(p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
-      if(p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
-      if(p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
-      return '<span class="text-red-600 font-bold">راسب</span>';
-  };
-
-  const teacherData = {};
-  validStudents.forEach(s => {
-      if(!teacherData[s.sheet]) {
-          teacherData[s.sheet] = {
-              name: s.sheet,
-              students: [],
-              grades: {
-                  'امتياز (90-100%)': 0,
-                  'جيد جدا (80-89%)': 0,
-                  'جيد (70-79%)': 0,
-                  'مقبول (50-69%)': 0,
-                  'راسب (أقل من 50%)': 0
-              },
-              total: 0
-          };
-      }
-      teacherData[s.sheet].students.push(s);
-      const p = s.percentage * 100;
-      if(p >= 90) teacherData[s.sheet].grades['امتياز (90-100%)']++;
-      else if(p >= 80) teacherData[s.sheet].grades['جيد جدا (80-89%)']++;
-      else if(p >= 70) teacherData[s.sheet].grades['جيد (70-79%)']++;
-      else if(p >= 50) teacherData[s.sheet].grades['مقبول (50-69%)']++;
-      else teacherData[s.sheet].grades['راسب (أقل من 50%)']++;
-      teacherData[s.sheet].total++;
-  });
-
-  let teachersDetailedHTML = '';
-  const chartConfigs = [];
-  
-  Object.keys(teacherData).forEach((teacher, idx) => {
-      const data = teacherData[teacher];
-      if (data.total === 0) return;
-
-      chartConfigs.push({
-          id: 'detailedChart_' + idx,
-          labels: Object.keys(data.grades),
-          data: Object.values(data.grades),
-          total: data.total
-      });
-
-      teachersDetailedHTML += `
-      <section class="glass bg-white p-4 md:p-6 shadow-sm rounded-2xl teacher-section hidden" data-teacher-name="${teacher}">
-          <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">المعلم / الفصل: ${teacher}</h2>
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-              <div class="lg:col-span-1 bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center shadow-sm">
-                  <h3 class="text-lg font-bold text-slate-800 mb-3 text-center">تحليل التقديرات</h3>
-                  <div class="h-[250px] md:h-[300px] w-full relative">
-                      <canvas id="detailedChart_${idx}" data-chart-idx="${idx}"></canvas>
-                  </div>
-              </div>
-              <div class="lg:col-span-2 overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white" style="max-height: 400px;">
-                  <table class="w-full text-right relative mobile-card-table">
-                      <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 sticky top-0 shadow-sm z-10">
-                          <tr>
-                              <th class="p-3 md:p-4 font-bold">م</th>
-                              <th class="p-3 md:p-4 font-bold">اسم الطالب</th>
-                              <th class="p-3 md:p-4 font-bold">المجموع</th>
-                              <th class="p-3 md:p-4 font-bold">النسبة</th>
-                              <th class="p-3 md:p-4 font-bold">التقدير</th>
-                          </tr>
-                      </thead>
-                      <tbody class="divide-y divide-slate-100">`;
-
-      data.students.sort((a, b) => b.total - a.total).forEach((s, sIdx) => {
-          const p = s.percentage * 100;
-          teachersDetailedHTML += `
-          <tr class="hover:bg-slate-50 transition-colors">
-              <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="م">${sIdx + 1}</td>
-              <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">${s.name}</td>
-              <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="المجموع">${s.total}</td>
-              <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${p.toFixed(1)}%</span></td>
-              <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
-          </tr>`;
-      });
-      teachersDetailedHTML += `</tbody></table></div></div></section>`;
-  });
-
-  const teacherStats = Object.keys(teacherData).map(teacher => {
-      const data = teacherData[teacher];
-      const excellentCount = data.grades['امتياز (90-100%)'];
-      const excellentPercentage = data.total > 0 ? (excellentCount / data.total) * 100 : 0;
-      return {
-          name: teacher,
-          total: data.total,
-          excellentCount: excellentCount,
-          excellentPercentage: excellentPercentage
-      };
-  }).filter(t => t.total > 0);
-
-  teacherStats.sort((a, b) => {
-      if (b.excellentPercentage !== a.excellentPercentage) {
-          return b.excellentPercentage - a.excellentPercentage;
-      }
-      return b.excellentCount - a.excellentCount;
-  });
-
-  let teacherRankingHTML = '';
-  teacherStats.forEach((t, idx) => {
-      teacherRankingHTML += `
-          <tr class="hover:bg-slate-50 transition-colors">
-              <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
-              <td class="p-3 md:p-4 font-bold text-slate-800" data-label="المعلم / الفصل">${t.name}</td>
-              <td class="p-3 md:p-4 text-slate-600" data-label="إجمالي الطلاب">${t.total}</td>
-              <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="عدد الامتياز">${t.excellentCount}</td>
-              <td class="p-3 md:p-4" data-label="نسبة الامتياز"><span class="bg-slate-100 text-emerald-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${t.excellentPercentage.toFixed(1)}%</span></td>
-          </tr>`;
-  });
-
-  let rankingHTML = '';
-  validStudents.sort((a, b) => b.percentage - a.percentage).forEach((s, idx) => {
-      const p = s.percentage * 100;
-      rankingHTML += `
-          <tr class="hover:bg-slate-50 transition-colors">
-              <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
-              <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">${s.name}</td>
-              <td class="p-3 md:p-4 text-slate-600" data-label="المعلم / الفصل">${s.sheet}</td>
-              <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="المجموع">${s.total}</td>
-              <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${p.toFixed(1)}%</span></td>
-              <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
-          </tr>`;
-  });
-
-  const htmlContent = `<!DOCTYPE html>
+  const htmlContent = \\\`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -300,7 +79,7 @@ try {
             
             <button onclick="setRole('teacher')" class="glass bg-white p-8 flex flex-col items-center text-center hover:-translate-y-2 hover:shadow-xl transition-all duration-300 group cursor-pointer border-2 border-transparent hover:border-emerald-500 rounded-2xl shadow-sm">
                 <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-800 mb-2">دخول كمعلم</h2>
                 <p class="text-slate-500 text-sm">عرض نتائج وتقييمات طلاب فصلك فقط وتحديد نسب النجاح</p>
@@ -354,7 +133,7 @@ try {
                 </div>
                 <select id="teacherDropdown" onchange="onTeacherSelected()" class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none w-full md:w-72 bg-slate-50 font-bold text-slate-700 cursor-pointer">
                     <option value="">-- اضغط لاختيار اسمك --</option>
-                    ${Object.keys(teacherData).map(t => `<option value="${t}">${t}</option>`).join('')}
+                    \\\${Object.keys(teacherData).map(t => \\\`<option value="\\\\\\\${t}">\\\\\\\${t}</option>\\\`).join('')}
                 </select>
             </div>
         </div>
@@ -370,15 +149,15 @@ try {
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 w-full lg:w-auto">
                     <div class="bg-slate-50 p-3 md:px-6 md:py-4 rounded-xl border border-slate-200 text-center">
                         <p class="text-xs md:text-sm text-slate-500 font-semibold mb-1">إجمالي الطلاب</p>
-                        <p class="text-xl md:text-3xl font-bold text-slate-800">${validStudents.length}</p>
+                        <p class="text-xl md:text-3xl font-bold text-slate-800">\\\${validStudents.length}</p>
                     </div>
                     <div class="bg-blue-50 p-3 md:px-6 md:py-4 rounded-xl border border-blue-200 text-center">
                         <p class="text-xs md:text-sm text-blue-600 font-semibold mb-1">متوسط النسبة</p>
-                        <p class="text-xl md:text-3xl font-bold text-blue-700">${avgScoreStr}</p>
+                        <p class="text-xl md:text-3xl font-bold text-blue-700">\\\${avgScoreStr}</p>
                     </div>
                     <div class="bg-emerald-50 p-3 md:px-6 md:py-4 rounded-xl border border-emerald-200 text-center col-span-2 md:col-span-1">
                         <p class="text-xs md:text-sm text-emerald-600 font-semibold mb-1">نسبة النجاح</p>
-                        <p class="text-xl md:text-3xl font-bold text-emerald-700">${passRateStr}</p>
+                        <p class="text-xl md:text-3xl font-bold text-emerald-700">\\\${passRateStr}</p>
                     </div>
                 </div>
             </header>
@@ -392,7 +171,7 @@ try {
             </div>
 
             <div id="teachersDetailedContainer" class="space-y-6 md:space-y-8">
-                ${teachersDetailedHTML}
+                \\\${teachersDetailedHTML}
             </div>
 
             <section id="teacherRankingContainer" class="glass bg-white p-4 md:p-6 shadow-sm rounded-2xl mt-8 mb-8 hidden">
@@ -408,7 +187,7 @@ try {
                                 <th class="p-3 md:p-4 font-bold">نسبة الامتياز</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">${teacherRankingHTML}</tbody>
+                        <tbody class="divide-y divide-slate-100">\\\${teacherRankingHTML}</tbody>
                     </table>
                 </div>
             </section>
@@ -427,7 +206,7 @@ try {
                                 <th class="p-3 md:p-4 font-bold">التقدير</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">${rankingHTML}</tbody>
+                        <tbody class="divide-y divide-slate-100">\\\${rankingHTML}</tbody>
                     </table>
                     <div id="noStudentsFound" class="hidden p-8 text-center text-slate-500 font-bold">لا يوجد طلاب مطابقين للبحث.</div>
                 </div>
@@ -458,8 +237,8 @@ try {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
-        const chartConfigs = ${JSON.stringify(chartConfigs)};
-        const allStudentsData = ${JSON.stringify(validStudents.map(s => ({
+        const chartConfigs = \\\${JSON.stringify(chartConfigs)};
+        const allStudentsData = \\\${JSON.stringify(validStudents.map(s => ({
             name: s.name, sheet: s.sheet, total: s.total, percentage: s.percentage
         })))};
         
@@ -512,12 +291,10 @@ try {
 
         // Logic for role switching
         function setRole(role) {
-            // Hide landing screen
             document.getElementById('roleSelectionScreen').classList.add('hidden');
-            // Show main application container
             document.getElementById('mainApp').classList.remove('hidden');
-
-            // Reset all view sections
+            
+            // Reset views
             document.getElementById('studentSearchView').classList.add('hidden');
             document.getElementById('teacherSelectView').classList.add('hidden');
             document.getElementById('dashboardContent').classList.add('hidden');
@@ -525,6 +302,8 @@ try {
             document.getElementById('managerGlobalSearch').classList.add('hidden');
             document.getElementById('teacherRankingContainer').classList.add('hidden');
             document.getElementById('allStudentsRankingContainer').classList.add('hidden');
+            
+            document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
 
             if (role === 'manager') {
                 document.getElementById('dashboardContent').classList.remove('hidden');
@@ -532,14 +311,12 @@ try {
                 document.getElementById('managerGlobalSearch').classList.remove('hidden');
                 document.getElementById('teacherRankingContainer').classList.remove('hidden');
                 document.getElementById('allStudentsRankingContainer').classList.remove('hidden');
-                // Show all teacher sections for manager
                 document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('hidden'));
+                
                 setTimeout(initializeCharts, 100);
             } else if (role === 'teacher') {
                 document.getElementById('teacherSelectView').classList.remove('hidden');
                 document.getElementById('dashboardContent').classList.remove('hidden');
-                // Hide all teacher sections until one is selected
-                document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
                 document.getElementById('teacherDropdown').value = ""; 
             } else if (role === 'student') {
                 document.getElementById('studentSearchView').classList.remove('hidden');
@@ -621,24 +398,27 @@ try {
             const p = (student.percentage * 100).toFixed(1);
             const gradeHtml = getGradeTextJS(student.percentage * 100);
             
-            document.getElementById('studentResultCard').innerHTML = \`
+            document.getElementById('studentResultCard').innerHTML = \\\`
                 <h3 class="text-xl font-bold text-slate-800 border-b pb-3 mb-6 text-center">نتيجة الطالب</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">الاسم</span><span class="font-bold text-lg text-slate-800">\${student.name}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المعلم / الفصل</span><span class="font-bold text-lg text-slate-800">\${student.sheet}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المجموع</span><span class="font-bold text-xl text-blue-700">\${student.total}</span></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">النسبة</span><span class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-lg font-bold inline-block">\${p}%</span></div>
-                    <div class="col-span-1 md:col-span-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center mt-2"><span class="text-slate-500 text-sm block mb-2">التقدير العام</span><div class="text-2xl">\${gradeHtml}</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">الاسم</span><span class="font-bold text-lg text-slate-800">\\\${student.name}</span></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المعلم / الفصل</span><span class="font-bold text-lg text-slate-800">\\\${student.sheet}</span></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">المجموع</span><span class="font-bold text-xl text-blue-700">\\\${student.total}</span></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm"><span class="text-slate-500 text-sm block mb-1">النسبة</span><span class="bg-slate-200 text-slate-800 px-3 py-1 rounded text-lg font-bold inline-block">\\\${p}%</span></div>
+                    <div class="col-span-1 md:col-span-2 bg-white p-4 rounded-xl border border-slate-100 shadow-sm text-center mt-2"><span class="text-slate-500 text-sm block mb-2">التقدير العام</span><div class="text-2xl">\\\${gradeHtml}</div></div>
                 </div>
-            \`;
+            \\\`;
             document.getElementById('studentResultCard').classList.remove('hidden');
         }
     </script>
 </body>
-</html>`;
+</html>\\\`;
 
   fs.writeFileSync('index.html', htmlContent);
   console.log('Dashboard generated successfully at index.html');
 } catch (error) {
   console.error('Error reading excel file:', error);
 }
+`;
+
+fs.writeFileSync('create_dashboard.js', goodPart + newPart);
