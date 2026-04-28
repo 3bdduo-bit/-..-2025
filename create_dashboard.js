@@ -352,7 +352,9 @@ try {
         body.dark-mode .mobile-card-table tr { background-color: #1e293b; border-color: #334155; }
         body.dark-mode .mobile-card-table td { border-bottom-color: #334155; color: #ffffff; }
         body.dark-mode .text-sky-600, body.dark-mode .text-blue-600, body.dark-mode .text-sky-700 { color: #7dd3fc; }
-        body.dark-mode .bg-slate-100 { background-color: #334155; color: #ffffff; }
+        body.dark-mode .text-purple-600 { color: #d8b4fe; }
+        body.dark-mode .bg-slate-100, body.dark-mode .bg-slate-200 { background-color: #334155; color: #ffffff; }
+        body.dark-mode .bg-slate-200.text-slate-800 { color: #ffffff !important; }
         body.dark-mode span { color: inherit; }
         
         /* Toggle Switch Styles */
@@ -927,9 +929,9 @@ try {
                 return;
             }
 
-            let searchCount = parseInt(localStorage.getItem('studentSearchCount_2025') || '0');
+            let searchCount = parseInt(localStorage.getItem('studentSearchCount_2025_v2') || '0');
             const searchedName = teacher + '|' + studentName;
-            const lastSearched = localStorage.getItem('lastSearchedStudent_2025');
+            const lastSearched = localStorage.getItem('lastSearchedStudent_2025_v2');
 
             if (lastSearched !== searchedName) {
                 if (searchCount >= 3) {
@@ -952,8 +954,8 @@ try {
 
             if (lastSearched !== searchedName) {
                 searchCount++;
-                localStorage.setItem('studentSearchCount_2025', searchCount);
-                localStorage.setItem('lastSearchedStudent_2025', searchedName);
+                localStorage.setItem('studentSearchCount_2025_v2', searchCount);
+                localStorage.setItem('lastSearchedStudent_2025_v2', searchedName);
             }
 
             document.getElementById('studentSelectionError').classList.add('hidden');
