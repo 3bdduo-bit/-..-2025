@@ -2,205 +2,205 @@ const xlsx = require("xlsx");
 const fs = require("fs");
 
 const filePath =
-  "C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx";
+    "C:\\\\Users\\\\W-11\\\\Desktop\\\\مدرسة التربية بالقرآن الكريم\\\\Excel\\\\النتيجة الكلية 2025.xlsx";
 
 function normalizeArabic(str) {
-  if (!str) return "";
-  return str
-    .trim()
-    .replace(/[أإآ]/g, "ا")
-    .replace(/[ةه]/g, "ه")
-    .replace(/\s+/g, " ")
-    .toLowerCase();
+    if (!str) return "";
+    return str
+        .trim()
+        .replace(/[أإآ]/g, "ا")
+        .replace(/[ةه]/g, "ه")
+        .replace(/\s+/g, " ")
+        .toLowerCase();
 }
 
 function cleanTeacherName(name) {
-  if (!name) return "غير معروف";
-  // Remove common prefixes/suffixes and symbols
-  return name.trim().replace(/^[-:/\\*\s]+|[-:/\\*\s]+$/g, "").trim();
+    if (!name) return "غير معروف";
+    // Remove common prefixes/suffixes and symbols
+    return name.trim().replace(/^[-:/\\*\s]+|[-:/\\*\s]+$/g, "").trim();
 }
 try {
-  const workbook = xlsx.readFile(filePath);
-  const allStudents = [];
+    const workbook = xlsx.readFile(filePath);
+    const allStudents = [];
 
-  // The 'الدرجات' sheet is the main summary organized by teacher sections
-  const mainSheet = workbook.Sheets["الدرجات"];
-  if (mainSheet) {
-    const json = xlsx.utils.sheet_to_json(mainSheet, { header: 1 });
-    let currentTeacher = "غير معروف";
+    // The 'الدرجات' sheet is the main summary organized by teacher sections
+    const mainSheet = workbook.Sheets["الدرجات"];
+    if (mainSheet) {
+        const json = xlsx.utils.sheet_to_json(mainSheet, { header: 1 });
+        let currentTeacher = "غير معروف";
 
-    for (let i = 0; i < json.length; i++) {
-      const row = json[i];
-      if (!row || row.length === 0) continue;
+        for (let i = 0; i < json.length; i++) {
+            const row = json[i];
+            if (!row || row.length === 0) continue;
 
-      const rowStr = row.join(" ");
-      if (rowStr.includes("مجموعة الأستاذ")) {
-        const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
-        let rawName = "";
-        if (match) {
-          rawName = match[1];
-        } else {
-          const parts = rowStr.split(":-");
-          rawName = parts[1] ? parts[1].trim() : rowStr;
-        }
-        currentTeacher = cleanTeacherName(rawName);
-        continue;
-      }
-
-      const id = row[0];
-      const name = row[1];
-      if (
-        typeof id === "number" &&
-        typeof name === "string" &&
-        name.trim().length > 0 &&
-        name !== "اسم الطالب"
-      ) {
-        let total = row[6] !== undefined ? row[6] : 0;
-        let percentage = row[7] !== undefined ? row[7] : 0;
-
-        allStudents.push({
-          sheet: currentTeacher,
-          id: id,
-          name: name.trim(),
-          test1: row[2] || 0,
-          test2: row[3] || 0,
-          test3: row[4] || 0,
-          test4: row[5] || 0,
-          total: total,
-          percentage: percentage,
-        });
-      }
-    }
-  }
-
-  // If we found no students in 'الدرجات', fallback to processing all sheets (old logic)
-  if (allStudents.length === 0) {
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const json = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-
-      let dataStartIdx = -1;
-      for (let i = 0; i < json.length; i++) {
-        const row = json[i];
-        if (row && row.includes("اسم الطالب")) {
-          for (let j = i + 1; j < json.length; j++) {
-            if (
-              json[j] &&
-              typeof json[j][1] === "string" &&
-              json[j][1].trim().length > 0 &&
-              json[j][1] !== "اسم الطالب"
-            ) {
-              dataStartIdx = j;
-              break;
+            const rowStr = row.join(" ");
+            if (rowStr.includes("مجموعة الأستاذ")) {
+                const match = rowStr.match(/مجموعة الأستاذ[\/\\]?ة?\s*[:-]\s*(.+)/);
+                let rawName = "";
+                if (match) {
+                    rawName = match[1];
+                } else {
+                    const parts = rowStr.split(":-");
+                    rawName = parts[1] ? parts[1].trim() : rowStr;
+                }
+                currentTeacher = cleanTeacherName(rawName);
+                continue;
             }
-          }
-          break;
+
+            const id = row[0];
+            const name = row[1];
+            if (
+                typeof id === "number" &&
+                typeof name === "string" &&
+                name.trim().length > 0 &&
+                name !== "اسم الطالب"
+            ) {
+                let total = row[6] !== undefined ? row[6] : 0;
+                let percentage = row[7] !== undefined ? row[7] : 0;
+
+                allStudents.push({
+                    sheet: currentTeacher,
+                    id: id,
+                    name: name.trim(),
+                    test1: row[2] || 0,
+                    test2: row[3] || 0,
+                    test3: row[4] || 0,
+                    test4: row[5] || 0,
+                    total: total,
+                    percentage: percentage,
+                });
+            }
         }
-      }
-
-      const extractRow = (row) => {
-        if (!row || !row[1] || typeof row[1] !== "string") return;
-        if (
-          row[1].includes("مدير المدرسة") ||
-          row[1].includes("القيمة العظمى") ||
-          row[1].includes("الدرجة العظمي")
-        )
-          return;
-
-        let total = row[6] !== undefined ? row[6] : 0;
-        let percentage = row[7] !== undefined ? row[7] : 0;
-        if (total > 0 && (!percentage || percentage === 0))
-          percentage = total / 250;
-
-        allStudents.push({
-          sheet: sheetName,
-          id: row[0] || "-",
-          name: row[1].trim(),
-          total: total,
-          percentage: percentage,
-        });
-      };
-
-      if (dataStartIdx !== -1) {
-        for (let i = dataStartIdx; i < json.length; i++) extractRow(json[i]);
-      }
     }
-  }
 
-  const validStudents = allStudents.filter((s) => s.total > 0 && s.name);
-  let totalPercentageSum = 0;
-  let passCount = 0;
-  validStudents.forEach((s) => {
-    const p = s.percentage * 100;
-    totalPercentageSum += p;
-    if (p >= 50) passCount++;
-  });
+    // If we found no students in 'الدرجات', fallback to processing all sheets (old logic)
+    if (allStudents.length === 0) {
+        for (const sheetName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sheetName];
+            const json = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
-  const avgScoreStr = validStudents.length
-    ? (totalPercentageSum / validStudents.length).toFixed(1) + "%"
-    : "0%";
-  const passRateStr = validStudents.length
-    ? ((passCount / validStudents.length) * 100).toFixed(1) + "%"
-    : "0%";
+            let dataStartIdx = -1;
+            for (let i = 0; i < json.length; i++) {
+                const row = json[i];
+                if (row && row.includes("اسم الطالب")) {
+                    for (let j = i + 1; j < json.length; j++) {
+                        if (
+                            json[j] &&
+                            typeof json[j][1] === "string" &&
+                            json[j][1].trim().length > 0 &&
+                            json[j][1] !== "اسم الطالب"
+                        ) {
+                            dataStartIdx = j;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
 
-  const getGradeText = (p) => {
-    if (p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
-    if (p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
-    if (p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
-    if (p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
-    return '<span class="text-red-600 font-bold">راسب</span>';
-  };
+            const extractRow = (row) => {
+                if (!row || !row[1] || typeof row[1] !== "string") return;
+                if (
+                    row[1].includes("مدير المدرسة") ||
+                    row[1].includes("القيمة العظمى") ||
+                    row[1].includes("الدرجة العظمي")
+                )
+                    return;
 
-  const teacherData = {};
-  const normalizedToDisplay = {};
+                let total = row[6] !== undefined ? row[6] : 0;
+                let percentage = row[7] !== undefined ? row[7] : 0;
+                if (total > 0 && (!percentage || percentage === 0))
+                    percentage = total / 250;
 
-  validStudents.forEach((s) => {
-    const norm = normalizeArabic(s.sheet);
-    if (!normalizedToDisplay[norm]) {
-      normalizedToDisplay[norm] = s.sheet;
+                allStudents.push({
+                    sheet: sheetName,
+                    id: row[0] || "-",
+                    name: row[1].trim(),
+                    total: total,
+                    percentage: percentage,
+                });
+            };
+
+            if (dataStartIdx !== -1) {
+                for (let i = dataStartIdx; i < json.length; i++) extractRow(json[i]);
+            }
+        }
     }
-    const teacherKey = normalizedToDisplay[norm];
-    s.sheet = teacherKey; // Unify the name for all references
 
-    if (!teacherData[teacherKey]) {
-      teacherData[teacherKey] = {
-        name: teacherKey,
-        students: [],
-        grades: {
-          "امتياز (90-100%)": 0,
-          "جيد جدا (80-89%)": 0,
-          "جيد (70-79%)": 0,
-          "مقبول (50-69%)": 0,
-          "راسب (أقل من 50%)": 0,
-        },
-        total: 0,
-      };
-    }
-    teacherData[teacherKey].students.push(s);
-    const p = s.percentage * 100;
-    if (p >= 90) teacherData[teacherKey].grades["امتياز (90-100%)"]++;
-    else if (p >= 80) teacherData[teacherKey].grades["جيد جدا (80-89%)"]++;
-    else if (p >= 70) teacherData[teacherKey].grades["جيد (70-79%)"]++;
-    else if (p >= 50) teacherData[teacherKey].grades["مقبول (50-69%)"]++;
-    else teacherData[teacherKey].grades["راسب (أقل من 50%)"]++;
-    teacherData[teacherKey].total++;
-  });
-
-  let teachersDetailedHTML = "";
-  const chartConfigs = [];
-
-  Object.keys(teacherData).forEach((teacher, idx) => {
-    const data = teacherData[teacher];
-    if (data.total === 0) return;
-
-    chartConfigs.push({
-      id: "detailedChart_" + idx,
-      labels: Object.keys(data.grades),
-      data: Object.values(data.grades),
-      total: data.total,
+    const validStudents = allStudents.filter((s) => s.total > 0 && s.name);
+    let totalPercentageSum = 0;
+    let passCount = 0;
+    validStudents.forEach((s) => {
+        const p = s.percentage * 100;
+        totalPercentageSum += p;
+        if (p >= 50) passCount++;
     });
 
-    teachersDetailedHTML += `
+    const avgScoreStr = validStudents.length
+        ? (totalPercentageSum / validStudents.length).toFixed(1) + "%"
+        : "0%";
+    const passRateStr = validStudents.length
+        ? ((passCount / validStudents.length) * 100).toFixed(1) + "%"
+        : "0%";
+
+    const getGradeText = (p) => {
+        if (p >= 90) return '<span class="text-sky-600 font-bold">امتياز</span>';
+        if (p >= 80) return '<span class="text-blue-600 font-bold">جيد جدا</span>';
+        if (p >= 70) return '<span class="text-yellow-600 font-bold">جيد</span>';
+        if (p >= 50) return '<span class="text-orange-500 font-bold">مقبول</span>';
+        return '<span class="text-red-600 font-bold">راسب</span>';
+    };
+
+    const teacherData = {};
+    const normalizedToDisplay = {};
+
+    validStudents.forEach((s) => {
+        const norm = normalizeArabic(s.sheet);
+        if (!normalizedToDisplay[norm]) {
+            normalizedToDisplay[norm] = s.sheet;
+        }
+        const teacherKey = normalizedToDisplay[norm];
+        s.sheet = teacherKey; // Unify the name for all references
+
+        if (!teacherData[teacherKey]) {
+            teacherData[teacherKey] = {
+                name: teacherKey,
+                students: [],
+                grades: {
+                    "امتياز (90-100%)": 0,
+                    "جيد جدا (80-89%)": 0,
+                    "جيد (70-79%)": 0,
+                    "مقبول (50-69%)": 0,
+                    "راسب (أقل من 50%)": 0,
+                },
+                total: 0,
+            };
+        }
+        teacherData[teacherKey].students.push(s);
+        const p = s.percentage * 100;
+        if (p >= 90) teacherData[teacherKey].grades["امتياز (90-100%)"]++;
+        else if (p >= 80) teacherData[teacherKey].grades["جيد جدا (80-89%)"]++;
+        else if (p >= 70) teacherData[teacherKey].grades["جيد (70-79%)"]++;
+        else if (p >= 50) teacherData[teacherKey].grades["مقبول (50-69%)"]++;
+        else teacherData[teacherKey].grades["راسب (أقل من 50%)"]++;
+        teacherData[teacherKey].total++;
+    });
+
+    let teachersDetailedHTML = "";
+    const chartConfigs = [];
+
+    Object.keys(teacherData).forEach((teacher, idx) => {
+        const data = teacherData[teacher];
+        if (data.total === 0) return;
+
+        chartConfigs.push({
+            id: "detailedChart_" + idx,
+            labels: Object.keys(data.grades),
+            data: Object.values(data.grades),
+            total: data.total,
+        });
+
+        teachersDetailedHTML += `
       <section class="glass bg-white p-4 md:p-6 shadow-sm rounded-2xl teacher-section hidden" data-teacher-name="${teacher}">
           <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4 md:mb-6 border-b pb-4 text-center">المعلم / الفصل: ${teacher}</h2>
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -223,11 +223,11 @@ try {
                       </thead>
                       <tbody class="divide-y divide-slate-100">`;
 
-    data.students
-      .sort((a, b) => b.total - a.total)
-      .forEach((s, sIdx) => {
-        const p = s.percentage * 100;
-        teachersDetailedHTML += `
+        data.students
+            .sort((a, b) => b.total - a.total)
+            .forEach((s, sIdx) => {
+                const p = s.percentage * 100;
+                teachersDetailedHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
               <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="م">${sIdx + 1}</td>
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">${s.name}</td>
@@ -235,35 +235,35 @@ try {
               <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${p.toFixed(1)}%</span></td>
               <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
           </tr>`;
-      });
-    teachersDetailedHTML += `</tbody></table></div></div></section>`;
-  });
+            });
+        teachersDetailedHTML += `</tbody></table></div></div></section>`;
+    });
 
-  const teacherStats = Object.keys(teacherData)
-    .map((teacher) => {
-      const data = teacherData[teacher];
-      const excellentCount = data.grades["امتياز (90-100%)"];
-      const excellentPercentage =
-        data.total > 0 ? (excellentCount / data.total) * 100 : 0;
-      return {
-        name: teacher,
-        total: data.total,
-        excellentCount: excellentCount,
-        excellentPercentage: excellentPercentage,
-      };
-    })
-    .filter((t) => t.total > 0);
+    const teacherStats = Object.keys(teacherData)
+        .map((teacher) => {
+            const data = teacherData[teacher];
+            const excellentCount = data.grades["امتياز (90-100%)"];
+            const excellentPercentage =
+                data.total > 0 ? (excellentCount / data.total) * 100 : 0;
+            return {
+                name: teacher,
+                total: data.total,
+                excellentCount: excellentCount,
+                excellentPercentage: excellentPercentage,
+            };
+        })
+        .filter((t) => t.total > 0);
 
-  teacherStats.sort((a, b) => {
-    if (b.excellentPercentage !== a.excellentPercentage) {
-      return b.excellentPercentage - a.excellentPercentage;
-    }
-    return b.excellentCount - a.excellentCount;
-  });
+    teacherStats.sort((a, b) => {
+        if (b.excellentPercentage !== a.excellentPercentage) {
+            return b.excellentPercentage - a.excellentPercentage;
+        }
+        return b.excellentCount - a.excellentCount;
+    });
 
-  let teacherRankingHTML = "";
-  teacherStats.forEach((t, idx) => {
-    teacherRankingHTML += `
+    let teacherRankingHTML = "";
+    teacherStats.forEach((t, idx) => {
+        teacherRankingHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
               <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="المعلم / الفصل">${t.name}</td>
@@ -271,14 +271,14 @@ try {
               <td class="p-3 md:p-4 font-semibold text-slate-800" data-label="عدد الامتياز">${t.excellentCount}</td>
               <td class="p-3 md:p-4" data-label="نسبة الامتياز"><span class="bg-slate-100 text-sky-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${t.excellentPercentage.toFixed(1)}%</span></td>
           </tr>`;
-  });
+    });
 
-  let rankingHTML = "";
-  validStudents
-    .sort((a, b) => b.percentage - a.percentage)
-    .forEach((s, idx) => {
-      const p = s.percentage * 100;
-      rankingHTML += `
+    let rankingHTML = "";
+    validStudents
+        .sort((a, b) => b.percentage - a.percentage)
+        .forEach((s, idx) => {
+            const p = s.percentage * 100;
+            rankingHTML += `
           <tr class="hover:bg-slate-50 transition-colors">
               <td class="p-3 md:p-4 text-slate-500 font-medium" data-label="الترتيب">${idx + 1}</td>
               <td class="p-3 md:p-4 font-bold text-slate-800" data-label="اسم الطالب">${s.name}</td>
@@ -287,9 +287,9 @@ try {
               <td class="p-3 md:p-4" data-label="النسبة"><span class="bg-slate-100 text-slate-700 py-1 px-3 rounded-md text-sm font-bold border border-slate-200">${p.toFixed(1)}%</span></td>
               <td class="p-3 md:p-4" data-label="التقدير">${getGradeText(p)}</td>
           </tr>`;
-    });
+        });
 
-  const htmlContent = `<!DOCTYPE html>
+    const htmlContent = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -335,12 +335,86 @@ try {
                 text-align: right;
             }
         }
+        /* Dark Mode Styles */
+        body.dark-mode { background-color: #0f172a; color: #ffffff; }
+        body.dark-mode .glass { background: #1e293b; border-color: #334155; color: #ffffff; }
+        body.dark-mode #roleSelectionScreen, body.dark-mode #mainApp, body.dark-mode #welcomeSplash { background-color: #0f172a; }
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3 { color: #ffffff; }
+        body.dark-mode p, body.dark-mode .text-slate-500, body.dark-mode .text-slate-600 { color: #cbd5e1; }
+        body.dark-mode .bg-slate-50, body.dark-mode .bg-slate-100, body.dark-mode .bg-white { background-color: #1e293b; }
+        body.dark-mode .border-slate-200, body.dark-mode .border-slate-300 { border-color: #334155; }
+        body.dark-mode select, body.dark-mode input { background-color: #1e293b; color: #ffffff; border-color: #334155; }
+        body.dark-mode table thead { background-color: #334155; color: #ffffff; }
+        body.dark-mode table tbody tr:hover { background-color: #1e293b; opacity: 0.8; }
+        body.dark-mode .text-slate-800, body.dark-mode .text-slate-700 { color: #ffffff; }
+        body.dark-mode #themeToggle { background-color: #1e293b; border-color: #475569; color: #ffffff; }
+        body.dark-mode .bg-blue-50, body.dark-mode .bg-sky-50, body.dark-mode .bg-purple-50 { background-color: #334155; }
+        body.dark-mode .mobile-card-table tr { background-color: #1e293b; border-color: #334155; }
+        body.dark-mode .mobile-card-table td { border-bottom-color: #334155; color: #ffffff; }
+        body.dark-mode .text-sky-600, body.dark-mode .text-blue-600, body.dark-mode .text-sky-700 { color: #7dd3fc; }
+        body.dark-mode .bg-slate-100 { background-color: #334155; color: #ffffff; }
+        body.dark-mode span { color: inherit; }
+        
+        /* Toggle Switch Styles */
+        #themeToggle { width: 64px; height: 32px; background-color: #e2e8f0; border: 2px solid #cbd5e1; position: fixed; top: 24px; right: 24px; z-index: 300; border-radius: 999px; cursor: pointer; transition: all 0.3s ease; padding: 2px; display: flex; align-items: center; justify-content: flex-start; }
+        #toggleCircle { width: 24px; height: 24px; background-color: #ffffff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(0); }
+        body.dark-mode #themeToggle { background-color: #334155; border-color: #475569; }
+        body.dark-mode #toggleCircle { transform: translateX(-30px); background-color: #1e293b; }
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
+    <!-- Theme Toggle Switch -->
+    <div id="themeToggle">
+        <div id="toggleCircle">
+            <svg id="themeIcon" class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path id="themePath" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Welcome Splash Screen -->
+    <div id="welcomeSplash" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 transition-opacity duration-1000">
+        <div class="relative">
+            <div class="absolute -inset-10 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
+            <div class="relative flex flex-col items-center">
+                <div class="w-32 h-32 mb-8 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/20 shadow-2xl animate-bounce">
+                     <svg class="w-16 h-16 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                     </svg>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-bold text-white mb-4 text-center tracking-tighter">مدرسة التربية بالقرءان الكريم</h1>
+                <div class="h-1 w-48 bg-gradient-to-r from-transparent via-blue-400 to-transparent mb-6"></div>
+                <p class="text-blue-200 text-xl md:text-2xl font-light tracking-widest animate-pulse">النتيجة السنوية لعام 2025</p>
+            </div>
+        </div>
+        <div class="absolute bottom-10 left-0 right-0 flex justify-center">
+            <div class="flex space-x-2 rtl:space-x-reverse">
+                <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div class="w-3 h-3 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div class="w-3 h-3 bg-blue-300 rounded-full animate-bounce"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Page Animation -->
+    <div id="fullPageAnimation" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 hidden opacity-0 transition-opacity duration-500">
+        <div class="relative flex items-center justify-center">
+            <div class="absolute w-48 h-48 border-4 border-t-blue-500 border-r-purple-500 border-b-sky-500 border-l-transparent rounded-full animate-[spin_1.5s_linear_infinite]"></div>
+            <div class="absolute w-32 h-32 border-4 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-sky-500 rounded-full animate-[spin_1s_linear_infinite_reverse]"></div>
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.5)]">
+                <svg class="w-8 h-8 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
+            </div>
+        </div>
+
+
+        <div class="mt-20">
+            <h2 id="animationRoleText" class="text-4xl font-bold text-white tracking-wider animate-pulse">جاري تجهيز بيئة العمل...</h2>
+        </div>
+    </div>
+
     <!-- Role Selection Screen -->
-    <div id="roleSelectionScreen" class="flex-1 flex flex-col items-center justify-center p-4 md:p-8 animate-fade-in bg-slate-50 min-h-screen">
+    <div id="roleSelectionScreen" class="flex-1 flex flex-col items-center justify-center p-4 md:p-8 animate-fade-in bg-slate-50 min-h-screen hidden">
         <div class="text-center mb-10">
             <h1 class="text-3xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">النتيجة الكلية 2025</h1>
             <p class="text-lg text-slate-500">مدرسة التربية بالقرآن الكريم - يرجى اختيار طريقة الدخول</p>
@@ -418,8 +492,8 @@ try {
                 <select id="teacherDropdown" onchange="onTeacherSelected()" class="px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none w-full md:w-72 bg-slate-50 font-bold text-slate-700 cursor-pointer">
                     <option value="">-- اضغط لاختيار اسمك --</option>
                     ${Object.keys(teacherData)
-                      .map((t) => `<option value="${t}">${t}</option>`)
-                      .join("")}
+            .map((t) => `<option value="${t}">${t}</option>`)
+            .join("")}
                 </select>
             </div>
         </div>
@@ -447,14 +521,6 @@ try {
                     </div>
                 </div>
             </header>
-
-            <div id="managerGlobalSearch" class="glass bg-white p-6 shadow-sm rounded-2xl hidden mb-8">
-                 <h2 class="text-lg font-bold text-slate-800 mb-4">البحث الشامل للطلاب</h2>
-                 <div class="relative max-w-3xl">
-                    <input type="text" id="managerSearchInput" onkeyup="filterAllStudents()" class="w-full px-4 py-3 pl-10 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-slate-800 font-semibold" placeholder="اكتب اسم الطالب للبحث السريع في جميع الفصول...">
-                    <svg class="w-6 h-6 text-slate-400 absolute left-4 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                 </div>
-            </div>
 
             <div id="teachersDetailedContainer" class="space-y-6 md:space-y-8">
                 ${teachersDetailedHTML}
@@ -509,7 +575,58 @@ try {
     <script>
         document.addEventListener('contextmenu', event => event.preventDefault());
 
+        // Splash Screen Logic
+        function startApp() {
+            const splash = document.getElementById('welcomeSplash');
+            const roleScreen = document.getElementById('roleSelectionScreen');
+            
+            setTimeout(() => {
+                if (splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(() => {
+                        splash.classList.add('hidden');
+                        if (roleScreen) {
+                            roleScreen.classList.remove('hidden');
+                            roleScreen.classList.add('animate-fade-in');
+                        }
+                    }, 1000);
+                }
+            }, 2000); // Duration set to 2 seconds
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startApp);
+        } else {
+            startApp();
+        }
+
         const backToTopBtn = document.getElementById('backToTop');
+        
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('themeToggle');
+        const themePath = document.getElementById('themePath');
+        const sunIcon = "M12 3v1m0 16v1m9-9h-1M4 9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z";
+        const moonIcon = "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z";
+
+        function updateThemeIcon(isDark) {
+            themePath.setAttribute('d', isDark ? sunIcon : moonIcon);
+            themePath.parentElement.style.color = isDark ? '#fbbf24' : '#475569';
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('school_dashboard_theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Load saved theme
+        if (localStorage.getItem('school_dashboard_theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            updateThemeIcon(true);
+        }
+
         window.addEventListener('scroll', () => {
             if (window.scrollY > 500) {
                 backToTopBtn.classList.add('opacity-100');
@@ -525,14 +642,14 @@ try {
 
         const chartConfigs = ${JSON.stringify(chartConfigs)};
         const allStudentsData = ${JSON.stringify(
-          validStudents.map((s) => ({
-            id: s.id,
-            name: s.name,
-            sheet: s.sheet,
-            total: s.total,
-            percentage: s.percentage,
-          })),
-        )};
+                validStudents.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    sheet: s.sheet,
+                    total: s.total,
+                    percentage: s.percentage,
+                })),
+            )};
         
         let chartsInitialized = {};
 
@@ -586,7 +703,7 @@ try {
             if (role === 'manager') {
                 const { isConfirmed } = await Swal.fire({
                     title: 'تسجيل دخول المدير',
-                    input: 'password',
+                    input: 'text',
                     inputPlaceholder: 'أدخل كلمة مرور المدير',
                     confirmButtonText: 'دخول',
                     cancelButtonText: 'إلغاء',
@@ -598,7 +715,7 @@ try {
                         if (input) input.focus();
                     },
                     preConfirm: (managerPassword) => {
-                        if ((managerPassword || '') !== "حسين فضالي عويس") {
+                        if ((managerPassword || '') !== "أبو عمار") {
                             Swal.showValidationMessage('كلمة مرور المدير غير صحيحة.');
                             return false;
                         }
@@ -612,38 +729,62 @@ try {
 
             // Hide landing screen
             document.getElementById('roleSelectionScreen').classList.add('hidden');
-            // Show main application container
-            document.getElementById('mainApp').classList.remove('hidden');
+            
+            // Show animation
+            const animationScreen = document.getElementById('fullPageAnimation');
+            const animationText = document.getElementById('animationRoleText');
+            
+            if (role === 'manager') animationText.innerText = 'جاري الدخول كمدير...';
+            else if (role === 'teacher') animationText.innerText = 'جاري الدخول كمعلم...';
+            else if (role === 'student') animationText.innerText = 'جاري الدخول كطالب...';
 
-            // Reset all view sections
-            document.getElementById('studentSearchView').classList.add('hidden');
-            document.getElementById('teacherSelectView').classList.add('hidden');
-            document.getElementById('dashboardContent').classList.add('hidden');
-            document.getElementById('managerHeader').classList.add('hidden');
-            document.getElementById('managerGlobalSearch').classList.add('hidden');
-            document.getElementById('teacherRankingContainer').classList.add('hidden');
-            document.getElementById('allStudentsRankingContainer').classList.add('hidden');
+            animationScreen.classList.remove('hidden');
+            setTimeout(() => {
+                animationScreen.classList.remove('opacity-0');
+                animationScreen.classList.add('opacity-100');
+            }, 10);
 
-            if (role === 'manager') {
-                document.getElementById('dashboardContent').classList.remove('hidden');
-                document.getElementById('managerHeader').classList.remove('hidden');
-                document.getElementById('managerGlobalSearch').classList.remove('hidden');
-                document.getElementById('teacherRankingContainer').classList.remove('hidden');
-                document.getElementById('allStudentsRankingContainer').classList.remove('hidden');
-                document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('hidden'));
-                setTimeout(initializeCharts, 100);
-            } else if (role === 'teacher') {
-                document.getElementById('teacherSelectView').classList.remove('hidden');
-                document.getElementById('dashboardContent').classList.remove('hidden');
-                document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
+            // Wait 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Hide animation
+            animationScreen.classList.remove('opacity-100');
+            animationScreen.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                animationScreen.classList.add('hidden');
                 
-                const dropdown = document.getElementById("teacherDropdown");
-                dropdown.value = "";
-            } else if (role === 'student') {
-                document.getElementById('studentSearchView').classList.remove('hidden');
-                populateStudentTeacherDropdown();
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Show main application container
+                document.getElementById('mainApp').classList.remove('hidden');
+
+                // Reset all view sections
+                document.getElementById('studentSearchView').classList.add('hidden');
+                document.getElementById('teacherSelectView').classList.add('hidden');
+                document.getElementById('dashboardContent').classList.add('hidden');
+                document.getElementById('managerHeader').classList.add('hidden');
+                document.getElementById('teacherRankingContainer').classList.add('hidden');
+                document.getElementById('allStudentsRankingContainer').classList.add('hidden');
+
+                if (role === 'manager') {
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+                    document.getElementById('managerHeader').classList.remove('hidden');
+                    document.getElementById('teacherRankingContainer').classList.remove('hidden');
+                    document.getElementById('allStudentsRankingContainer').classList.remove('hidden');
+                    document.querySelectorAll('.teacher-section').forEach(el => el.classList.remove('hidden'));
+                    setTimeout(initializeCharts, 100);
+                } else if (role === 'teacher') {
+                    document.getElementById('teacherSelectView').classList.remove('hidden');
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+                    document.querySelectorAll('.teacher-section').forEach(el => el.classList.add('hidden'));
+                    
+                    const dropdown = document.getElementById("teacherDropdown");
+                    dropdown.value = "";
+                } else if (role === 'student') {
+                    document.getElementById('studentSearchView').classList.remove('hidden');
+                    populateStudentTeacherDropdown();
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 500); // Wait for fade out transition
         }
 
         function logout() {
@@ -730,27 +871,6 @@ try {
                 
         function normalizeArabic(str) {
             return str.replace(/[أإآ]/g, 'ا').replace(/[ةه]/g, 'ه').toLowerCase();
-        }
-        
-        
-        function filterAllStudents() {
-            const queryRaw = document.getElementById('managerSearchInput').value;
-            const query = normalizeArabic(queryRaw);
-            const rows = document.querySelectorAll('#allStudentsTable tbody tr');
-            let found = false;
-            rows.forEach(row => {
-                const nameCell = row.children[1];
-                if (nameCell) {
-                    const name = normalizeArabic(nameCell.textContent);
-                    if(name.includes(query)) {
-                        row.style.display = '';
-                        found = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                }
-            });
-            document.getElementById('noStudentsFound').style.display = found ? 'none' : 'block';
         }
 
         
@@ -855,8 +975,8 @@ try {
 </body>
 </html>`;
 
-  fs.writeFileSync("index.html", htmlContent);
-  console.log("Dashboard generated successfully at index.html");
+    fs.writeFileSync("index.html", htmlContent);
+    console.log("Dashboard generated successfully at index.html");
 } catch (error) {
-  console.error("Error reading excel file:", error);
+    console.error("Error reading excel file:", error);
 }
